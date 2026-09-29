@@ -1,0 +1,31 @@
+name: Build delivery partner APK
+on:
+  push:
+    branches: [main]
+    paths: ['partner_app/**', '.github/workflows/partner-apk.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - name: Create Android project and restore app sources
+        run: |
+          cp partner_app/pubspec.yaml /tmp/delivery-pubspec.yaml
+          cp partner_app/lib/main.dart /tmp/delivery-main.dart
+          cd partner_app
+          flutter create --platforms=android --org live.learnwithchampak .
+          cp /tmp/delivery-pubspec.yaml pubspec.yaml
+          cp /tmp/delivery-main.dart lib/main.dart
+          flutter pub get
+          flutter analyze
+          flutter build apk --release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: delivery-partner-apk
+          path: partner_app/build/app/outputs/flutter-apk/app-release.apk
