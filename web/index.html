@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Delivery Platform dispatcher prototype for managing orders across projects.">
+  <meta property="og:title" content="Delivery Platform"><meta property="og:description" content="A reusable delivery management platform.">
+  <title>Delivery Platform · Dispatcher</title>
+  <link rel="stylesheet" href="styles.css"><script src="app.js" defer></script>
+</head>
+<body>
+  <header><div class="brand"><span class="logo">D</span><div><strong>Delivery Platform</strong><small>Dispatcher prototype</small></div></div><span class="badge">Sample data</span></header>
+  <main>
+    <section class="intro"><div><p class="eyebrow">OPERATIONS OVERVIEW</p><h1>Deliveries in one place</h1><p>Manage deliveries from Easy Mandi and other connected projects.</p></div><span class="date" id="today"></span></section>
+    <section class="metrics" id="metrics" aria-label="Order summary"></section>
+    <section class="panel"><div class="panel-head"><div><h2>Orders</h2><p>Select a row to view its timeline and delivery details.</p></div><label>Filter <select id="statusFilter"><option value="all">All statuses</option><option value="created">Created</option><option value="assigned">Assigned</option><option value="picked_up">Picked up</option><option value="out_for_delivery">Out for delivery</option><option value="delivered">Delivered</option></select></label></div>
+    <div class="table-wrap"><table><thead><tr><th>Order</th><th>Project</th><th>Customer</th><th>Partner</th><th>Status</th><th>Amount</th></tr></thead><tbody id="orders"></tbody></table></div></section>
+    <aside class="panel detail" id="detail" aria-live="polite"><h2>Order details</h2><p>Select an order to see its delivery timeline.</p></aside>
+    <footer>Developed &amp; maintained by <a href="https://learnwithchampak.live">Champak Roy</a> · Prototype with sample data</footer>
+  </main>
+</body></html>
