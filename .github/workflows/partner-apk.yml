@@ -5,7 +5,7 @@ on:
     paths: ['partner_app/**', '.github/workflows/partner-apk.yml']
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -31,3 +31,9 @@ jobs:
         with:
           name: delivery-partner-apk
           path: partner_app/build/app/outputs/flutter-apk/app-release.apk
+      - name: Publish at fixed release URL
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view partner-apk >/dev/null 2>&1 || gh release create partner-apk --title "Delivery Partner APK" --notes "Latest delivery partner Android build"
+          gh release upload partner-apk partner_app/build/app/outputs/flutter-apk/app-release.apk#DeliveryPartner.apk --clobber
