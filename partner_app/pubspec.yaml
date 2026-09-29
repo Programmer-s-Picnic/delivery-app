@@ -1,0 +1,12 @@
+name: delivery_partner
+description: Delivery Platform partner app.
+publish_to: none
+version: 1.0.0+1
+environment:
+  sdk: '>=3.4.0 <4.0.0'
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_secure_storage: ^9.2.4
+flutter:
+  uses-material-design: true
