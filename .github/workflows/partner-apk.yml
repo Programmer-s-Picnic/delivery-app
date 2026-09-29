@@ -22,6 +22,8 @@ jobs:
           flutter create --platforms=android --org live.learnwithchampak .
           cp /tmp/delivery-pubspec.yaml pubspec.yaml
           cp /tmp/delivery-main.dart lib/main.dart
+          rm -rf test analysis_options.yaml
+          sed -i 's/<application/<uses-permission android:name="android.permission.INTERNET"\/><application/' android/app/src/main/AndroidManifest.xml
           flutter pub get
           flutter analyze
           flutter build apk --release
