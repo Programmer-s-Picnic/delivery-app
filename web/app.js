@@ -1,0 +1,16 @@
+const orders=[
+{id:"DL-1001",source:"Easy Mandi",customer:"Anita Sharma",partner:"Ravi Kumar",status:"out_for_delivery",amount:340,address:"Lanka, Varanasi",events:[["Created","09:10"],["Assigned to Ravi Kumar","09:18"],["Picked up","10:02"],["Out for delivery","10:17"]]},
+{id:"DL-1002",source:"Easy Mandi",customer:"Amit Singh",partner:"Priya Gupta",status:"picked_up",amount:580,address:"Sigra, Varanasi",events:[["Created","09:34"],["Assigned to Priya Gupta","09:48"],["Picked up","10:25"]]},
+{id:"DL-1003",source:"Punya Yatra",customer:"Neha Verma",partner:"Unassigned",status:"created",amount:0,address:"Assi, Varanasi",events:[["Created","10:06"]]},
+{id:"DL-1004",source:"Easy Mandi",customer:"Rahul Mishra",partner:"Sanjay Yadav",status:"delivered",amount:720,address:"Bhelupur, Varanasi",events:[["Created","08:05"],["Assigned to Sanjay Yadav","08:15"],["Picked up","08:50"],["Out for delivery","09:03"],["Delivered","09:42"]]}
+];
+const label=s=>s.split("_").map(w=>w[0].toUpperCase()+w.slice(1)).join(" ");
+const escapeHTML=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+document.getElementById("today").textContent=new Intl.DateTimeFormat("en-IN",{dateStyle:"full",timeZone:"Asia/Kolkata"}).format(new Date());
+document.getElementById("metrics").innerHTML=[["Total orders",orders.length],["Awaiting assignment",orders.filter(o=>o.status==="created").length],["In progress",orders.filter(o=>["assigned","picked_up","out_for_delivery"].includes(o.status)).length],["Delivered",orders.filter(o=>o.status==="delivered").length]].map(([name,n])=>`<article class="metric"><span>${name}</span><strong>${n}</strong></article>`).join("");
+function render(){let filter=document.getElementById("statusFilter").value,items=orders.filter(o=>filter==="all"||o.status===filter);document.getElementById("orders").innerHTML=items.length?items.map(o=>`<tr tabindex="0" data-id="${o.id}"><td><strong>${o.id}</strong></td><td>${escapeHTML(o.source)}</td><td>${escapeHTML(o.customer)}</td><td>${escapeHTML(o.partner)}</td><td><span class="status ${o.status}">${label(o.status)}</span></td><td>₹${o.amount}</td></tr>`).join(""):'<tr><td colspan="6">No orders in this status.</td></tr>'}
+function show(id){let o=orders.find(x=>x.id===id);if(!o)return;document.getElementById("detail").innerHTML=`<h2>${o.id} · ${label(o.status)}</h2><div class="detail-grid"><div><small>Customer</small><strong>${escapeHTML(o.customer)}</strong></div><div><small>Delivery partner</small><strong>${escapeHTML(o.partner)}</strong></div><div><small>Delivery area</small><strong>${escapeHTML(o.address)}</strong></div></div><h3>Timeline</h3><ol class="timeline">${o.events.map(([event,time])=>`<li><strong>${escapeHTML(event)}</strong><time>${escapeHTML(time)} IST · sample</time></li>`).join("")}</ol>`}
+document.getElementById("statusFilter").addEventListener("change",render);
+document.getElementById("orders").addEventListener("click",e=>{let row=e.target.closest("[data-id]");if(row)show(row.dataset.id)});
+document.getElementById("orders").addEventListener("keydown",e=>{if(["Enter"," "].includes(e.key)){let row=e.target.closest("[data-id]");if(row){e.preventDefault();show(row.dataset.id)}}});
+render();
