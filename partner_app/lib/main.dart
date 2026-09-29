@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 const endpoint = 'https://cserver.learnwithchampak.live/delivery/api/';
 const storage = FlutterSecureStorage();
@@ -92,6 +93,9 @@ class _JobsPageState extends State<JobsPage> {
             crossAxisAlignment:CrossAxisAlignment.start,children:[
               Text('Order ${o['external_order_id']}',style:Theme.of(context).textTheme.titleMedium),
               Text('Status: $status'),Text(o['customer_name'] as String),Text(o['address_text'] as String),
+              if(o['location_lat']!=null&&o['location_lng']!=null) TextButton.icon(
+                onPressed:() async {final uri=Uri.https('www.google.com','/maps/search/',{'api':'1','query':"${o['location_lat']},${o['location_lng']}"});await launchUrl(uri,mode:LaunchMode.externalApplication);},
+                icon:const Icon(Icons.navigation_outlined),label:const Text('Navigate to customer')),
               if(next!=null)FilledButton(onPressed:()=>change(id,'status',status:next),
                 child:Text('Mark ${next.replaceAll('_',' ')}')),
               if(status=='out_for_delivery')FilledButton(onPressed:()=>confirm(id),
