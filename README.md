@@ -1,30 +1,19 @@
 # Delivery Platform
 
-Reusable delivery management for Easy Mandi and future projects. This repository contains the delivery-facing web app and shared API contract. The PHP API and database belong in a separate `cserver/delivery` folder, so each client can use the same service.
+Reusable delivery management for Easy Mandi and future projects.
 
-## First milestone
+## Current state
 
-- Accept an order from a client project with a unique `source_app` and `external_order_id`.
-- Assign an available delivery partner and track the order from creation to completion.
-- Keep a timestamped audit trail for every status change.
-- Let the customer open a tracking link without exposing other customers' orders.
-- Provide dispatcher and delivery partner views.
-- Use password-based accounts initially; SMS OTP is deferred.
+The [web handoff prototype](web/) demonstrates three views in one browser: admin cart import, customer handoff code, and delivery-person code entry. It accepts pasted or uploaded cart JSON and keeps one demo order in browser storage. It links to the existing [Easy Mandi admin](https://programmer-s-picnic.github.io/easymandi/admin/).
 
-## Status flow
+**This is a local prototype.** It has no secure login, shared database, actual customer delivery, or real notifications. Do not use its displayed code as a real proof of delivery.
 
-`created → accepted → assigned → picked_up → out_for_delivery → delivered`
+## Production design
 
-An order may be `cancelled` before delivery. Failed delivery moves to `delivery_failed`, then may be reassigned or cancelled. The server validates all transitions; the client never sets arbitrary status.
+- [Easy Mandi handoff and integration contract](docs/easymandi-handoff.md)
+- [Delivery API draft](docs/api.md)
+- [Proposed database schema](docs/schema.sql)
 
-## Repository layout
+Production surfaces: a delivery admin website, an authenticated Flutter app for delivery partners, and a reusable customer delivery module integrated into the existing Easy Mandi Flutter customer app. The PHP service will live under `cserver/delivery`; SMS OTP is deferred.
 
-- `web/`: runnable front-end prototype, using sample data.
-- `docs/api.md`: API and integration contract for the independent server.
-- `docs/schema.sql`: proposed MySQL tables with the `delivery_` prefix.
-
-Open `web/index.html` locally to explore the dispatcher prototype. It is a sample UI, not a live order system. Production integration requires the server endpoints, login, permissions, and real data.
-
-## Integration with Easy Mandi
-
-Easy Mandi sends an order to `POST /delivery/api/orders` after its own checkout succeeds. The delivery platform responds with its own ID and tracking token. The source order remains owned by Easy Mandi; the delivery platform stores a snapshot of the recipient, address, collection amount, and items needed to deliver it. Retry with the same source/order ID to avoid duplicates. Other applications use a different `source_app` value.
+The handoff code is issued and checked on the server. On successful verification, the server records one delivered event and creates in-app notifications for the customer, dispatcher, and delivery partner.
