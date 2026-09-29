@@ -1,20 +1,16 @@
 <!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="Delivery Platform dispatcher prototype for managing orders across projects.">
-  <meta property="og:title" content="Delivery Platform"><meta property="og:description" content="A reusable delivery management platform.">
-  <title>Delivery Platform · Dispatcher</title>
-  <link rel="stylesheet" href="styles.css"><script src="app.js" defer></script>
-</head>
-<body>
-  <header><div class="brand"><span class="logo">D</span><div><strong>Delivery Platform</strong><small>Dispatcher prototype</small></div></div><span class="badge">Sample data</span></header>
-  <main>
-    <section class="intro"><div><p class="eyebrow">OPERATIONS OVERVIEW</p><h1>Deliveries in one place</h1><p>Manage deliveries from Easy Mandi and other connected projects.</p></div><span class="date" id="today"></span></section>
-    <section class="metrics" id="metrics" aria-label="Order summary"></section>
-    <section class="panel"><div class="panel-head"><div><h2>Orders</h2><p>Select a row to view its timeline and delivery details.</p></div><label>Filter <select id="statusFilter"><option value="all">All statuses</option><option value="created">Created</option><option value="assigned">Assigned</option><option value="picked_up">Picked up</option><option value="out_for_delivery">Out for delivery</option><option value="delivered">Delivered</option></select></label></div>
-    <div class="table-wrap"><table><thead><tr><th>Order</th><th>Project</th><th>Customer</th><th>Partner</th><th>Status</th><th>Amount</th></tr></thead><tbody id="orders"></tbody></table></div></section>
-    <aside class="panel detail" id="detail" aria-live="polite"><h2>Order details</h2><p>Select an order to see its delivery timeline.</p></aside>
-    <footer>Developed &amp; maintained by <a href="https://learnwithchampak.live">Champak Roy</a> · Prototype with sample data</footer>
-  </main>
-</body></html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#0879b7"><meta name="description" content="Delivery Platform handoff workflow prototype."><title>Delivery Platform</title><link rel="stylesheet" href="styles.css"><script src="app.js" defer></script></head>
+<body><header><div class="brand"><span class="logo">D</span><div><strong>Delivery Platform</strong><small>Easy Mandi integration prototype</small></div></div><span class="badge">Local demo · no live notifications</span></header>
+<main><section class="intro"><div><p class="eyebrow">DELIVERY WORKFLOW</p><h1>Order handoff</h1><p>Try the admin, customer, and delivery person views in this browser.</p></div></section>
+<nav class="tabs" aria-label="User view"><button data-view="admin" aria-selected="true">Admin</button><button data-view="customer" aria-selected="false">Customer</button><button data-view="partner" aria-selected="false">Delivery person</button></nav>
+<div id="message" role="status" aria-live="polite"></div>
+<section id="admin" class="panel view"><h2>Admin · Easy Mandi</h2><p>Manage the existing Easy Mandi catalog and customer orders in its admin site. Create a delivery from a cart below.</p><a class="action-link" href="https://programmer-s-picnic.github.io/easymandi/admin/">Open Easy Mandi admin ↗</a>
+<h3>Import shopping cart</h3><p>Paste a cart JSON object, or upload a JSON file. Enter the customer and delivery address before creating the handoff.</p>
+<label for="cart">Cart JSON</label><textarea id="cart" rows="8" placeholder='{"items":[{"name":"Potatoes","quantity":2,"unit":"kg"}],"total":120}'></textarea>
+<label for="file">Upload cart JSON</label><input id="file" type="file" accept=".json,application/json">
+<div class="form-grid"><label>Customer name<input id="customerName" autocomplete="name" required></label><label>Mobile number<input id="customerPhone" type="tel" inputmode="tel" placeholder="10-digit Indian mobile number" required></label><label>Delivery address<textarea id="address" rows="2" required></textarea></label><label>Source order ID<input id="sourceId" placeholder="e.g. EM-1234"></label></div>
+<button id="create">Create demo delivery</button><p class="note">The server must generate and send the real handoff code. This demo displays it in the customer view to illustrate the flow.</p></section>
+<section id="customer" class="panel view" hidden><h2>Customer · tracking</h2><p>Give the handoff code to the delivery person only when you receive your order.</p><div id="customerContent"></div></section>
+<section id="partner" class="panel view" hidden><h2>Delivery person · completion</h2><p>Enter the code provided by the customer after handing over the order.</p><div id="partnerContent"></div></section>
+<section class="panel"><h2>Shared order timeline</h2><div id="timeline"></div></section>
+<footer>Developed &amp; maintained by <a href="https://learnwithchampak.live">Champak Roy</a> · Prototype data stays in this browser</footer></main></body></html>
