@@ -6,7 +6,7 @@ Reusable delivery system for Easy Mandi and future projects.
 
 - [Delivery admin website](web/) on GitHub Pages: Easy Mandi order import, manual cart upload/paste, partner creation and assignment, code issuance with a WhatsApp handoff link, order list and notification inbox.
 - [PHP/MySQL service](https://github.com/Programmer-s-Picnic/cserver/tree/main/delivery): password-protected admin actions, partner accounts and tokens, customer account integration, status changes, code verification with expiry and attempt limits, event log and in-app notification records.
-- [Partner Flutter app](partner_app/) with sign-in, assigned jobs, status updates and code confirmation.
+- [Partner Flutter app](partner_app/) with sign-in, assigned jobs, status updates and code confirmation. Fixed APK: [DeliveryPartner.apk](https://raw.githubusercontent.com/Programmer-s-Picnic/json-images/main/delivery/DeliveryPartner.apk).
 - Customer tracking screen in the [Easy Mandi Flutter app](https://github.com/Programmer-s-Picnic/easymandi/blob/main/lib/delivery_page.dart), using its existing account token.
 
 ## Operating flow
