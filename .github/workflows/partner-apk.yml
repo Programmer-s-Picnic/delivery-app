@@ -24,6 +24,7 @@ jobs:
           cp /tmp/delivery-main.dart lib/main.dart
           rm -rf test analysis_options.yaml
           sed -i 's/<application/<uses-permission android:name="android.permission.INTERNET"\/><application/' android/app/src/main/AndroidManifest.xml
+          sed -i 's/android:label="delivery_partner"/android:label="Delivery Partner"/' android/app/src/main/AndroidManifest.xml
           flutter pub get
           flutter analyze
           flutter build apk --release
