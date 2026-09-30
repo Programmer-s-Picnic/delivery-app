@@ -1,16 +1,5 @@
 (() => {
  'use strict';
- const style=document.createElement('style');
- style.textContent=`
- .notification-dock{position:fixed;bottom:12px;right:12px;width:min(360px,calc(100vw - 24px));z-index:10000;background:white;color:#18364d;border:1px solid #b5c9db;border-radius:14px;box-shadow:0 5px 24px #18364d33;padding:12px;font:14px system-ui}
- .notification-dock header{padding:0;background:white;border:0;display:flex;align-items:center;justify-content:space-between;gap:8px}
- .notification-dock button,.notification-modal button{border:0;border-radius:8px;padding:9px;background:#126dba;color:white;font:inherit;cursor:pointer}
- .notification-preview{max-height:110px;overflow:auto;margin-top:8px;white-space:pre-line}
- .notification-modal{width:min(620px,calc(100vw - 24px));max-height:80vh;overflow:auto;border:1px solid #b5c9db;border-radius:16px;padding:20px;color:#18364d;background:white}
- .notification-modal::backdrop{background:#18364d66}
- .notification-modal article{padding:12px;margin:8px 0;border:1px solid #b5c9db;border-radius:10px}
- body{padding-bottom:210px!important}
- `;document.head.append(style);
  window.NotificationInbox=class{
  constructor(root,load,mark,open){
   Object.assign(this,{root,load,mark,open,active:false,loading:false,seen:new Set(),data:{notifications:[],unreadCount:0}});
@@ -25,10 +14,11 @@
   this.list=document.createElement('section');this.dialog.append(close,this.list);document.body.append(this.dialog);
   this.view=root.closest('.view');
   this.syncView=()=>{this.dock.hidden=!!this.view?.hidden;};
-  if(this.view)new MutationObserver(this.syncView).observe(this.view,{attributes:true,attributeFilter:['hidden']});
-  this.syncView();this.timer=setInterval(()=>{if(this.active)this.refresh().catch(()=>{this.preview.textContent='Could not check updates. Retrying automatically.';});},300000);
+  if(this.view){this.observer=new MutationObserver(this.syncView);this.observer.observe(this.view,{attributes:true,attributeFilter:['hidden']});}
+  this.syncView();this.timer=setInterval(()=>{if(this.active&&!document.hidden)this.refresh().catch(()=>{this.preview.textContent='Could not check updates. Retrying automatically.';});},300000);
   this.root.replaceChildren();this.list.textContent=this.lockedMessage;
  }
+ destroy(){this.stop();clearInterval(this.timer);this.observer?.disconnect();this.dock.remove();this.dialog.remove();}
  show(){if(!this.dialog.open)this.dialog.showModal();}
  stop(){this.active=false;this.seen.clear();this.data={notifications:[],unreadCount:0};this.title.textContent='Notifications';this.preview.textContent=this.lockedMessage;this.list.replaceChildren();this.list.textContent=this.lockedMessage;if(this.dialog.open)this.dialog.close();this.root.replaceChildren();}
  async refresh(){if(this.loading)return;this.loading=true;try{const data=await this.load();if(!this.active)return;this.render(data);}finally{this.loading=false;}}
@@ -50,23 +40,3 @@
  };
 })();
 
-(() => {
- const key='easy-mandi-admin-session-v1';
- let timer;
- function clear(){sessionStorage.removeItem(key);clearTimeout(timer);window.dispatchEvent(new Event('admin-session-ended'));}
- function get(){let value;try{value=JSON.parse(sessionStorage.getItem(key));}catch{}if(!value?.token||!Number.isFinite(value.expiresAt)||Date.now()>=value.expiresAt){if(value)clear();return null;}return value;}
- function schedule(){clearTimeout(timer);const s=get();if(s)timer=setTimeout(clear,Math.max(0,s.expiresAt-Date.now()));}
- window.AdminSession={
-  get token(){return get()?.token||null;},
-  get expiresAt(){return get()?.expiresAt||0;},
-  clear,
-  async login(password){
-   const r=await fetch('https://cserver.learnwithchampak.live/easymandi/api/admin-session.php',{method:'POST',cache:'no-store',headers:{'Content-Type':'application/json','X-Admin-Password':password},body:'{}'});
-   const data=await r.json();if(!r.ok)throw Error(data.error||'Could not start admin session.');
-   sessionStorage.setItem(key,JSON.stringify({token:data.token,expiresAt:data.expiresAt*1000}));
-   schedule();window.dispatchEvent(new Event('admin-session-started'));return data;
-  },
-  headers(){const s=get();if(!s)throw Error('Your 30-minute admin session has ended. Enter the admin password again.');return {'X-Admin-Session':s.token};}
- };
- schedule();
-})();

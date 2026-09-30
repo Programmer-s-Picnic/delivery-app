@@ -4,7 +4,7 @@ const adminSession=window.AdminSession;
 let customerToken='',partnerToken='';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function note(s,error=false){$('message').textContent=s;$('message').className=error?'error':'notice'}
-async function request(action,method='GET',data=null,auth=''){const headers={'Content-Type':'application/json'};if(auth==='admin')Object.assign(headers,adminSession.headers());if(auth==='customer')headers.Authorization='Bearer '+customerToken;if(auth==='partner')headers.Authorization='Bearer '+partnerToken;const response=await fetch(API+'?action='+encodeURIComponent(action),{method,headers,body:data?JSON.stringify(data):undefined,cache:'no-store'});let result;try{result=await response.json()}catch{throw Error('Server response was invalid')}if(!response.ok){if(auth==='admin'&&response.status===401)adminSession.clear();throw Error(result.error||'Request failed');}return result}
+async function request(action,method='GET',data=null,auth=''){const headers={'Content-Type':'application/json'};if(auth==='admin')Object.assign(headers,adminSession.headers());if(auth==='customer')headers.Authorization='Bearer '+customerToken;if(auth==='partner')headers.Authorization='Bearer '+partnerToken;const response=await AppHttp.fetch(API+'?action='+encodeURIComponent(action),{method,headers,body:data?JSON.stringify(data):undefined,cache:'no-store'});let result;try{result=await response.json()}catch{throw Error('Server response was invalid')}if(!response.ok){if(auth==='admin'&&response.status===401)adminSession.clear();throw Error(result.error||'Request failed');}return result}
 function run(fn){return async(...args)=>{try{await fn(...args)}catch(e){note(e.message||'Request failed',true)}}}
 document.querySelectorAll('[data-view]').forEach(button=>button.onclick=()=>{document.querySelectorAll('.view').forEach(el=>el.hidden=el.id!==button.dataset.view);document.querySelectorAll('[data-view]').forEach(el=>el.setAttribute('aria-selected',String(el===button)));note('')});
 $('file').onchange=run(async()=>{let f=$('file').files[0];if(!f)return;if(f.size>1024*1024)throw Error('JSON file must be under 1 MB');let raw=await f.text();JSON.parse(raw);$('cart').value=raw;note('Cart loaded for review. Import by Easy Mandi order ID.')});
@@ -58,8 +58,8 @@ if(incomingOrder){$('externalId').value=incomingOrder;note('Order ID received fr
 const inboxes={};
 for(const role of ['admin','customer','partner']){
  const fetchInbox=async(body=null)=>{
-  const headers={'Content-Type':'application/json'};if(role==='admin')headers['X-Admin-Password']=adminPassword;else headers.Authorization='Bearer '+(role==='customer'?customerToken:partnerToken);
-  const r=await fetch(API+'?action=notifications&audience='+role,{method:body?'POST':'GET',headers,cache:'no-store',...(body?{body:JSON.stringify(body)}:{})});const data=await r.json();if(!r.ok)throw Error(data.error||'Could not load notifications');return data;
+  const headers={'Content-Type':'application/json'};if(role==='admin')Object.assign(headers,adminSession.headers());else headers.Authorization='Bearer '+(role==='customer'?customerToken:partnerToken);
+  const r=await AppHttp.fetch(API+'?action=notifications&audience='+role,{method:body?'POST':'GET',headers,cache:'no-store',...(body?{body:JSON.stringify(body)}:{})});const data=await r.json();if(!r.ok)throw Error(data.error||'Could not load notifications');return data;
  };
  inboxes[role]=new NotificationInbox($(role+'Notifications'),()=>fetchInbox(),id=>fetchInbox({id}),n=>{
   const root=$(role==='admin'?'adminOrders':role==='partner'?'partnerOrders':'customerOrders');
@@ -76,3 +76,4 @@ window.addEventListener('admin-session-ended',()=>{
 });
 async function resumeAdmin(){if(!adminSession.token)return;try{await loadAdmin();$('adminArea').hidden=false;$('adminLogout').hidden=false;$('adminPassword').parentElement.hidden=true;$('adminLogin').hidden=true;inboxes.admin.active=true;await inboxes.admin.refresh();note('Admin access active for 30 minutes from password entry.');}catch(e){note(e.message,true);}}
 if(adminSession.token)resumeAdmin();
+

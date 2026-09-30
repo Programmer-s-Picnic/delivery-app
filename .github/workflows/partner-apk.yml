@@ -22,11 +22,12 @@ jobs:
           flutter create --platforms=android --org live.learnwithchampak .
           cp /tmp/delivery-pubspec.yaml pubspec.yaml
           cp /tmp/delivery-main.dart lib/main.dart
-          rm -rf test analysis_options.yaml
+          rm -f test/widget_test.dart analysis_options.yaml
           sed -i 's/<application/<uses-permission android:name="android.permission.INTERNET"\/><application/' android/app/src/main/AndroidManifest.xml
           sed -i 's/android:label="delivery_partner"/android:label="Delivery Partner"/' android/app/src/main/AndroidManifest.xml
           flutter pub get
           flutter analyze
+          flutter test
           flutter build apk --release
       - uses: actions/upload-artifact@v4
         with:
@@ -38,3 +39,4 @@ jobs:
         run: |
           gh release view partner-apk >/dev/null 2>&1 || gh release create partner-apk --title "Delivery Partner APK" --notes "Latest delivery partner Android build"
           gh release upload partner-apk partner_app/build/app/outputs/flutter-apk/app-release.apk#DeliveryPartner.apk --clobber
+
