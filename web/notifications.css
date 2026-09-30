@@ -1,8 +1,59 @@
-.notification-dock{position:fixed;bottom:12px;right:12px;width:min(360px,calc(100vw - 24px));z-index:10000;background:white;color:#18364d;border:1px solid #b5c9db;border-radius:14px;box-shadow:0 5px 24px #18364d33;padding:12px;font:14px system-ui}
- .notification-dock header{padding:0;background:white;border:0;display:flex;align-items:center;justify-content:space-between;gap:8px}
- .notification-dock button,.notification-modal button{border:0;border-radius:8px;padding:9px;background:#126dba;color:white;font:inherit;cursor:pointer}
- .notification-preview{max-height:110px;overflow:auto;margin-top:8px;white-space:pre-line}
- .notification-modal{width:min(620px,calc(100vw - 24px));max-height:80vh;overflow:auto;border:1px solid #b5c9db;border-radius:16px;padding:20px;color:#18364d;background:white}
- .notification-modal::backdrop{background:#18364d66}
- .notification-modal article{padding:12px;margin:8px 0;border:1px solid #b5c9db;border-radius:10px}
- body{padding-bottom:210px!important}
+.notification-dock {
+  position:fixed;
+  bottom:12px;
+  right:12px;
+  width:min(360px,calc(100vw - 24px));
+  z-index:10000;
+  background:white;
+  color:#18364d;
+  border:1px solid #b5c9db;
+  border-radius:14px;
+  box-shadow:0 5px 24px #18364d33;
+  padding:12px;
+  font:14px system-ui}
+
+ .notification-dock header {
+  padding:0;
+  background:white;
+  border:0;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px}
+
+ .notification-dock button,.notification-modal button {
+  border:0;
+  border-radius:8px;
+  padding:9px;
+  background:#126dba;
+  color:white;
+  font:inherit;
+  cursor:pointer}
+
+ .notification-preview {
+  max-height:110px;
+  overflow:auto;
+  margin-top:8px;
+  white-space:pre-line}
+
+ .notification-modal {
+  width:min(620px,calc(100vw - 24px));
+  max-height:80vh;
+  overflow:auto;
+  border:1px solid #b5c9db;
+  border-radius:16px;
+  padding:20px;
+  color:#18364d;
+  background:white}
+
+ .notification-modal::backdrop {
+  background:#18364d66}
+
+ .notification-modal article {
+  padding:12px;
+  margin:8px 0;
+  border:1px solid #b5c9db;
+  border-radius:10px}
+
+ body {
+  padding-bottom:210px!important}

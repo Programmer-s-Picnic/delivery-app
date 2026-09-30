@@ -7,3 +7,5 @@ Changes: shared web HTTP/session/notification modules; inline script/style extra
 Validation: `node tests/web-regression.cjs`, JavaScript parsing, Flutter analysis/tests and APK build workflows. Backend additionally tests the actual HTTP catalog session-save contract, signature/expiry, notification recipient scope, money, request fingerprints and terminal-order eligibility.
 
 Device installation/upgrade, actual WhatsApp sending and background notifications are not inferred from a successful CI build. No SMS verification or push-service feature was added. Existing guest/customer flows remain available.
+
+All original HTML IDs were compared against the pre-cleanup snapshot. No control was removed. Current web regressions passed locally and on GitHub Actions. Actual catalog HTTP session-save/expiry/conflict checks passed in backend CI.
