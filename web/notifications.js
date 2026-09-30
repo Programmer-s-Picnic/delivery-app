@@ -26,10 +26,10 @@
   this.syncView=()=>{this.dock.hidden=!!this.view?.hidden;};
   if(this.view)new MutationObserver(this.syncView).observe(this.view,{attributes:true,attributeFilter:['hidden']});
   this.syncView();this.timer=setInterval(()=>{if(this.active)this.refresh().catch(()=>{this.preview.textContent='Could not check updates. Retrying automatically.';});},300000);
-  this.root.replaceChildren();
+  this.root.replaceChildren();this.list.textContent='Sign in to see your notifications.';
  }
  show(){if(!this.dialog.open)this.dialog.showModal();}
- stop(){this.active=false;this.seen.clear();this.data={notifications:[],unreadCount:0};this.title.textContent='Notifications';this.preview.textContent='Sign in to see your notifications.';this.list.replaceChildren();if(this.dialog.open)this.dialog.close();this.root.replaceChildren();}
+ stop(){this.active=false;this.seen.clear();this.data={notifications:[],unreadCount:0};this.title.textContent='Notifications';this.preview.textContent='Sign in to see your notifications.';this.list.replaceChildren();this.list.textContent='Sign in to see your notifications.';if(this.dialog.open)this.dialog.close();this.root.replaceChildren();}
  async refresh(){if(this.loading)return;this.loading=true;try{const data=await this.load();if(!this.active)return;this.render(data);}finally{this.loading=false;}}
  render(data){
   this.data=data;this.title.textContent='Notifications · '+data.unreadCount+' unread';
