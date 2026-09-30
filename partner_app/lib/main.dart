@@ -27,10 +27,11 @@ class _JobsPageState extends State<JobsPage> {
   String? token,error;
   Timer? timer;
   bool polling=false;
+  final Set<String> shownNotifications={};
   int get unread=>notifications.where((n)=>n['read_at']==null).length;
   bool busy=false;
   List<dynamic> jobs=[], notifications=[];
-  @override void initState(){super.initState();restore();timer=Timer.periodic(const Duration(seconds:30),(_){if(token!=null&&!busy&&WidgetsBinding.instance.lifecycleState==AppLifecycleState.resumed)poll();});}
+  @override void initState(){super.initState();restore();timer=Timer.periodic(const Duration(minutes:5),(_){if(token!=null&&!busy&&WidgetsBinding.instance.lifecycleState==AppLifecycleState.resumed)poll();});}
   @override void dispose(){timer?.cancel();mobile.dispose();password.dispose();super.dispose();}
   Future<Map<String,dynamic>> call(String action,{Map<String,Object?>? body}) async {
     final client=HttpClient()..connectionTimeout=const Duration(seconds:10);
@@ -56,6 +57,12 @@ class _JobsPageState extends State<JobsPage> {
   });
   Future<void> fetchJobs() async {
     final result=await call('partner');
+    if(mounted){
+      final incoming=result['notifications'] as List<dynamic>? ?? [];
+      final fresh=incoming.where((n)=>n['read_at']==null&&!shownNotifications.contains(n['id'].toString())).toList();
+      for(final n in incoming){shownNotifications.add(n['id'].toString());}
+      if(fresh.isNotEmpty)ScaffoldMessenger.of(context).showSnackBar(SnackBar(duration:const Duration(seconds:20),content:Text('${fresh.length} new notification(s): ${fresh.first['message']}')));
+    }
     if(mounted)setState((){jobs=result['orders'] as List<dynamic>? ?? [];notifications=result['notifications'] as List<dynamic>? ?? [];});
   }
   Future<void> poll() async {if(polling)return;polling=true;try{await fetchJobs();}catch(_){}finally{polling=false;}}
@@ -67,7 +74,7 @@ class _JobsPageState extends State<JobsPage> {
     await call('partner',body:{'operation':operation,'id':id,if(status!=null)'status':status,if(code!=null)'code':code});
     await fetchJobs();
   });
-  Future<void> logout() async {await storage.delete(key:'partner_token');setState((){token=null;jobs=[];notifications=[];});}
+  Future<void> logout() async {await storage.delete(key:'partner_token');setState((){token=null;jobs=[];notifications=[];shownNotifications.clear();});}
   Future<void> confirm(int id) async {
     final controller=TextEditingController();
     try {
