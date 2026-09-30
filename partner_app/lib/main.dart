@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -24,10 +25,13 @@ class JobsPage extends StatefulWidget {
 class _JobsPageState extends State<JobsPage> {
   final mobile=TextEditingController(), password=TextEditingController();
   String? token,error;
+  Timer? timer;
+  bool polling=false;
+  int get unread=>notifications.where((n)=>n['read_at']==null).length;
   bool busy=false;
   List<dynamic> jobs=[], notifications=[];
-  @override void initState(){super.initState();restore();}
-  @override void dispose(){mobile.dispose();password.dispose();super.dispose();}
+  @override void initState(){super.initState();restore();timer=Timer.periodic(const Duration(seconds:30),(_){if(token!=null&&!busy&&WidgetsBinding.instance.lifecycleState==AppLifecycleState.resumed)poll();});}
+  @override void dispose(){timer?.cancel();mobile.dispose();password.dispose();super.dispose();}
   Future<Map<String,dynamic>> call(String action,{Map<String,Object?>? body}) async {
     final client=HttpClient()..connectionTimeout=const Duration(seconds:10);
     try {
@@ -54,6 +58,10 @@ class _JobsPageState extends State<JobsPage> {
     final result=await call('partner');
     if(mounted)setState((){jobs=result['orders'] as List<dynamic>? ?? [];notifications=result['notifications'] as List<dynamic>? ?? [];});
   }
+  Future<void> poll() async {if(polling)return;polling=true;try{await fetchJobs();}catch(_){}finally{polling=false;}}
+  Future<void> markNotifications([int? id])=>run(() async {
+    await call('partner',body:{'operation':'read-notifications','id':id});await fetchJobs();
+  });
   Future<void> refresh()=>run(fetchJobs);
   Future<void> change(int id,String operation,{String? status,String? code})=>run(() async {
     await call('partner',body:{'operation':operation,'id':id,if(status!=null)'status':status,if(code!=null)'code':code});
@@ -73,7 +81,7 @@ class _JobsPageState extends State<JobsPage> {
     } finally {controller.dispose();}
   }
   @override Widget build(BuildContext context)=>Scaffold(
-    appBar:AppBar(title:const Text('Delivery Partner'),actions:[
+    appBar:AppBar(title:Text('Delivery Partner · $unread unread'),actions:[
       if(token!=null)IconButton(onPressed:busy?null:refresh,icon:const Icon(Icons.refresh)),
       if(token!=null)IconButton(onPressed:logout,icon:const Icon(Icons.logout))
     ]),
@@ -102,8 +110,10 @@ class _JobsPageState extends State<JobsPage> {
                 child:const Text('Enter customer code'))
             ])));
         }),
-        if(notifications.isNotEmpty)Text('Updates',style:Theme.of(context).textTheme.titleLarge),
-        for(final raw in notifications)ListTile(title:Text((raw as Map<String,dynamic>)['message'] as String? ?? 'Update'))
+        if(notifications.isNotEmpty)TextButton(onPressed:()=>markNotifications(),child:const Text('Mark all notifications as read')),
+        if(notifications.isNotEmpty)Text('Notifications',style:Theme.of(context).textTheme.titleLarge),
+        for(final raw in notifications)ListTile(leading:Icon(raw['read_at']==null?Icons.notifications_active:Icons.notifications_none),onTap:()=>markNotifications((raw['id'] as num).toInt()),subtitle:Text(raw['created_at'] as String? ?? ''),title:Text((raw as Map<String,dynamic>)['message'] as String? ?? 'Update'))
       ])),
   );
 }
+
