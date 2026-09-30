@@ -45,7 +45,7 @@ async function loadPartner(){const data=await request('partner','GET',null,'part
 function filterDeliveries(){
  const query=$('deliverySearch').value.trim().toLowerCase(),status=$('deliveryFilter').value;
  const cards=[...$('adminOrders').querySelectorAll('.order')];let shown=0;
- for(const card of cards){card.hidden=!(card.dataset.search.includes(query)&&(!status||card.dataset.status===status));if(!card.hidden)shown++}
+ for(const card of cards){card.hidden=!(card.dataset.search.includes(query)&&(!status||String(card.dataset.status).trim().toLowerCase()===status));if(!card.hidden)shown++}
  $('deliveryCount').textContent=shown+' of '+cards.length+' deliveries';
 }
 $('deliverySearch').oninput=filterDeliveries;
@@ -66,3 +66,5 @@ for(const role of ['admin','customer','partner']){
  });
 }
 setInterval(()=>{for(const role of ['admin','customer','partner']){const active=!!(role==='admin'?adminPassword:role==='customer'?customerToken:partnerToken);if(active!==inboxes[role].active){inboxes[role].active=active;if(active)inboxes[role].refresh().catch(()=>{});else inboxes[role].stop();}}},3000);
+
+setInterval(()=>{if(adminPassword&&!document.hidden)loadAdmin().catch(e=>note(e.message,true));},300000);

@@ -12,6 +12,8 @@ void main() => runApp(const PartnerApp());
 class PartnerApp extends StatelessWidget {
   const PartnerApp({super.key});
   @override Widget build(BuildContext context) => MaterialApp(
+    navigatorKey:notificationNavigator,
+    builder:notificationOverlay,
     title: 'Delivery Partner',
     theme: ThemeData(useMaterial3: true, colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF0879B7))),
     home: const JobsPage(),
@@ -31,7 +33,7 @@ class _JobsPageState extends State<JobsPage> {
   int get unread=>notifications.where((n)=>n['read_at']==null).length;
   bool busy=false;
   List<dynamic> jobs=[], notifications=[];
-  @override void initState(){super.initState();restore();timer=Timer.periodic(const Duration(minutes:5),(_){if(token!=null&&!busy&&WidgetsBinding.instance.lifecycleState==AppLifecycleState.resumed)poll();});}
+  @override void initState(){super.initState();notificationMark=(n)=>markNotifications(n==null?null:(n['id'] as num).toInt());restore();timer=Timer.periodic(const Duration(minutes:5),(_){if(token!=null&&!busy&&WidgetsBinding.instance.lifecycleState==AppLifecycleState.resumed)poll();});}
   @override void dispose(){timer?.cancel();mobile.dispose();password.dispose();super.dispose();}
   Future<Map<String,dynamic>> call(String action,{Map<String,Object?>? body}) async {
     final client=HttpClient()..connectionTimeout=const Duration(seconds:10);
@@ -63,6 +65,7 @@ class _JobsPageState extends State<JobsPage> {
       for(final n in incoming){shownNotifications.add(n['id'].toString());}
       if(fresh.isNotEmpty)ScaffoldMessenger.of(context).showSnackBar(SnackBar(duration:const Duration(seconds:20),content:Text('${fresh.length} new notification(s): ${fresh.first['message']}')));
     }
+    if(mounted){notificationFeed.value=(result['notifications'] as List<dynamic>? ?? []).map((n)=>Map<String,dynamic>.from(n as Map)).toList();}
     if(mounted)setState((){jobs=result['orders'] as List<dynamic>? ?? [];notifications=result['notifications'] as List<dynamic>? ?? [];});
   }
   Future<void> poll() async {if(polling)return;polling=true;try{await fetchJobs();}catch(_){}finally{polling=false;}}
@@ -74,7 +77,7 @@ class _JobsPageState extends State<JobsPage> {
     await call('partner',body:{'operation':operation,'id':id,if(status!=null)'status':status,if(code!=null)'code':code});
     await fetchJobs();
   });
-  Future<void> logout() async {await storage.delete(key:'partner_token');setState((){token=null;jobs=[];notifications=[];shownNotifications.clear();});}
+  Future<void> logout() async {await storage.delete(key:'partner_token');setState((){token=null;notificationFeed.value=[];jobs=[];notifications=[];shownNotifications.clear();});}
   Future<void> confirm(int id) async {
     final controller=TextEditingController();
     try {
@@ -124,3 +127,40 @@ class _JobsPageState extends State<JobsPage> {
   );
 }
 
+
+final notificationNavigator = GlobalKey<NavigatorState>();
+final notificationFeed = ValueNotifier<List<Map<String,dynamic>>>([]);
+Future<void> Function(Map<String,dynamic>?)? notificationMark;
+Widget notificationOverlay(BuildContext context, Widget? child) => Stack(children:[
+  if(child!=null)child,
+  Positioned(left:12,right:12,bottom:82,child:SafeArea(child:Material(
+    elevation:8,borderRadius:BorderRadius.circular(14),color:const Color(0xFFE8F2FC),
+    child:ValueListenableBuilder<List<Map<String,dynamic>>>(valueListenable:notificationFeed,builder:(context,items,_) {
+      final unread=items.where((n)=>n['read_at']==null).length;
+      final latest=items.isEmpty?'No notifications yet.':(items.first['message'] as String? ?? 'Update');
+      return Padding(padding:const EdgeInsets.all(12),child:Column(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.start,children:[
+        Row(children:[Expanded(child:Text('Notifications · $unread unread',style:const TextStyle(fontWeight:FontWeight.bold))),
+          TextButton(onPressed:showNotificationModal,child:const Text('View all'))]),
+        Text(latest,maxLines:2,overflow:TextOverflow.ellipsis)
+      ]));
+    }))))
+]);
+Future<void> showNotificationModal() async {
+  final context=notificationNavigator.currentContext;
+  if(context==null)return;
+  await showDialog<void>(context:context,builder:(dialogContext)=>AlertDialog(
+    title:const Text('Notifications'),
+    content:SizedBox(width:520,height:350,child:ValueListenableBuilder<List<Map<String,dynamic>>>(
+      valueListenable:notificationFeed,builder:(context,items,_)=>items.isEmpty?const Center(child:Text('No notifications yet.')):
+        ListView(children:[for(final n in items)ListTile(
+          leading:Icon(n['read_at']==null?Icons.notifications_active:Icons.notifications_none),
+          title:Text(n['message'] as String? ?? 'Update'),subtitle:Text(n['created_at'] as String? ?? ''),
+          trailing:n['read_at']==null?IconButton(tooltip:'Mark as read',icon:const Icon(Icons.done),onPressed:()async{
+            try{await notificationMark?.call(n);}catch(_){if(dialogContext.mounted)ScaffoldMessenger.of(dialogContext).showSnackBar(const SnackBar(content:Text('Could not mark as read. Please retry.')));}
+          }):null
+        )])
+    )),
+    actions:[TextButton(onPressed:()async{try{await notificationMark?.call(null);}catch(_){if(dialogContext.mounted)ScaffoldMessenger.of(dialogContext).showSnackBar(const SnackBar(content:Text('Could not mark as read. Please retry.')));}},child:const Text('Mark all as read')),
+      TextButton(onPressed:()=>Navigator.pop(dialogContext),child:const Text('Close'))]
+  ));
+}
