@@ -384,7 +384,9 @@ async function loadPartner(){
       map.rel='noopener noreferrer';
       map.textContent='Navigate to customer';
       article.append(map)
-    }const next={
+    }
+    if(/^[6-9][0-9]{9}$/.test(o.customer_mobile||'')){const call=document.createElement('a');call.href='tel:+91'+o.customer_mobile;call.className='action-link';call.textContent='Call customer';article.append(call);}
+    const next={
       assigned:'picked_up',picked_up:'out_for_delivery'
     }[o.status];
     if(next){

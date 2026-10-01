@@ -112,6 +112,9 @@ class _JobsPageState extends State<JobsPage> {
           return Card(child:Padding(padding:const EdgeInsets.all(16),child:Column(
             crossAxisAlignment:CrossAxisAlignment.start,children:[
               Text('Order ${o['external_order_id']}',style:Theme.of(context).textTheme.titleMedium),
+              if(RegExp(r'^[6-9][0-9]{9}$').hasMatch('${o['customer_mobile']??''}')) OutlinedButton.icon(
+                onPressed:() async {try{final opened=await launchUrl(Uri(scheme:'tel',path:"+91${o['customer_mobile']}"));if(!opened&&context.mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Could not open phone dialer.')));}catch(_){if(context.mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Could not open phone dialer.')));}},
+                icon:const Icon(Icons.call),label:const Text('Call customer')),
               Text('Status: $status'),Text(o['customer_name'] as String),Text(o['address_text'] as String),
               if(o['location_lat']!=null&&o['location_lng']!=null) TextButton.icon(
                 onPressed:() async {final uri=Uri.https('www.google.com','/maps/search/',{'api':'1','query':"${o['location_lat']},${o['location_lng']}"});await launchUrl(uri,mode:LaunchMode.externalApplication);},
