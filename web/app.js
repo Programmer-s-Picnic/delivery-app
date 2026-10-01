@@ -85,9 +85,10 @@ async function loadAdmin(focusId=null){
     article.className='order';
     article.dataset.orderId=String(o.id);
     article.dataset.status=o.status;
+    article.dataset.status=o.status;
     article.dataset.search=(o.external_order_id+' '+o.customer_name+' '+o.address_text).toLowerCase();
     const title=document.createElement('h4');
-    title.textContent=o.external_order_id+' · '+o.status;
+    title.textContent=o.external_order_id+' · '+({created:'Unassigned',assigned:'Assigned',picked_up:'Picked up',out_for_delivery:'Out for delivery',delivered:'Delivered',cancelled:'Cancelled'}[o.status]||o.status);
     const details=document.createElement('p');
     details.textContent=o.customer_name+' · '+o.address_text;
     const select=document.createElement('select');
@@ -331,8 +332,9 @@ async function loadCustomer(){
     let article=document.createElement('article');
     article.className='order';
     article.dataset.orderId=String(o.id);
+    article.dataset.status=o.status;
     let title=document.createElement('h4');
-    title.textContent=o.external_order_id+' · '+o.status;
+    title.textContent=o.external_order_id+' · '+({created:'Unassigned',assigned:'Assigned',picked_up:'Picked up',out_for_delivery:'Out for delivery',delivered:'Delivered',cancelled:'Cancelled'}[o.status]||o.status);
     let p=document.createElement('p');
     p.textContent='Track this order here. The admin sends the handoff code separately.';
     article.append(title,p);
@@ -369,6 +371,7 @@ async function loadPartner(){
     let article=document.createElement('article');
     article.className='order';
     article.dataset.orderId=String(o.id);
+    article.dataset.status=o.status;
     let h=document.createElement('h4');
     h.textContent=o.external_order_id+' · '+o.status;
     let p=document.createElement('p');
