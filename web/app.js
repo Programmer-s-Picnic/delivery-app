@@ -278,8 +278,13 @@ function renderPartnerList(){
  $('partnerCount').textContent=rows.length+' of '+partnerRecords.length+' partners · '+partnerRecords.filter(p=>Number(p.active)).length+' active';
  if(!rows.length){root.textContent='No matching partners. Add a partner or change the filters.';return;}
  const table=document.createElement('table');table.className='partner-grid';const head=document.createElement('thead'),row=document.createElement('tr');
- for(const label of ['ID','Name','Mobile','Status','Actions']){const th=document.createElement('th');th.textContent=label;th.setAttribute('scope','col');row.append(th);}head.append(row);table.append(head);const body=document.createElement('tbody');
- for(const p of rows){const tr=document.createElement('tr');for(const text of [p.id,p.name,p.mobile,Number(p.active)?'Active':'Inactive']){const td=document.createElement('td');td.textContent=text;tr.append(td);}
+ for(const label of ['Photo','ID','Name','Mobile','Status','Actions']){const th=document.createElement('th');th.textContent=label;th.setAttribute('scope','col');row.append(th);}head.append(row);table.append(head);const body=document.createElement('tbody');
+ for(const p of rows){const tr=document.createElement('tr');
+ const photoCell=document.createElement('td');const avatar=document.createElement('button');avatar.type='button';avatar.className='partner-avatar';avatar.setAttribute('aria-label','View or change photo for '+p.name);avatar.title='View or change photo';
+ const dummy=document.createElement('span');dummy.setAttribute('aria-hidden','true');dummy.innerHTML='<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/></svg>';avatar.append(dummy);avatar.onclick=()=>openPartnerPhoto(p);
+ if(Number(p.has_photo))request('admin','POST',{operation:'partner-photo-get',id:Number(p.id)},'admin').then(result=>{if(!adminSession.token||!result.photo||!avatar.isConnected)return;const image=document.createElement('img');image.alt=p.name+' photo';image.src=result.photo;image.onerror=()=>avatar.replaceChildren(dummy);avatar.replaceChildren(image);}).catch(()=>{});
+ photoCell.append(avatar);tr.append(photoCell);
+ for(const text of [p.id,p.name,p.mobile,Number(p.active)?'Active':'Inactive']){const td=document.createElement('td');td.textContent=text;tr.append(td);}
  const td=document.createElement('td');const controls=document.createElement('div');controls.className='partner-actions';
  const update=document.createElement('button');update.type='button';update.className='secondary';update.textContent='Update';update.onclick=()=>openPartner(p);
  const remove=document.createElement('button');remove.type='button';remove.className='danger';remove.textContent='Delete';remove.disabled=partnerBusy;
@@ -524,7 +529,7 @@ $('partnerPhotoFile').onchange=async()=>{
 async function savePartnerPhoto(remove=false){
  if(photoBusy||!photoPartner||(!remove&&!photoImage))return;if(remove&&!confirm('Remove the saved photo for '+photoPartner.name+'?'))return;
  const partner=photoPartner;photoBusy=true;$('partnerPhotoSave').disabled=$('partnerPhotoDelete').disabled=$('partnerPhotoFile').disabled=true;$('partnerPhotoMessage').textContent='Saving…';
- try{await request('admin','POST',{operation:remove?'partner-photo-delete':'partner-photo-save',id:Number(partner.id),...(!remove?{image:photoImage}:{})},'admin');$('partnerPhotoMessage').textContent=remove?'Photo removed successfully.':'Photo saved successfully.';partnerFeedback((remove?'Photo removed':'Photo saved')+' for '+partner.name+'.');if(remove){$('partnerPhotoPreview').hidden=true;photoImage=null;}$('partnerPhotoFile').value='';}
+ try{await request('admin','POST',{operation:remove?'partner-photo-delete':'partner-photo-save',id:Number(partner.id),...(!remove?{image:photoImage}:{})},'admin');$('partnerPhotoMessage').textContent=remove?'Photo removed successfully.':'Photo saved successfully.';partnerFeedback((remove?'Photo removed':'Photo saved')+' for '+partner.name+'.');partner.has_photo=remove?0:1;renderPartnerList();if(remove){$('partnerPhotoPreview').hidden=true;photoImage=null;}$('partnerPhotoFile').value='';}
  catch(e){$('partnerPhotoMessage').textContent=e.message;}finally{photoBusy=false;$('partnerPhotoSave').disabled=!photoImage;$('partnerPhotoDelete').disabled=$('partnerPhotoPreview').hidden;$('partnerPhotoFile').disabled=false;}
 }
 $('partnerPhotoSave').onclick=()=>savePartnerPhoto();$('partnerPhotoDelete').onclick=()=>savePartnerPhoto(true);
