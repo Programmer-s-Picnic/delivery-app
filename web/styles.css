@@ -435,3 +435,8 @@ button.danger { background:#ffebe8; color:#9b251d; }
 .admin-password-dialog label { display:block; margin:14px 0; }
 .admin-password-dialog input { display:block; width:100%; margin-top:5px; }
 .admin-password-dialog::backdrop { background:#18364d88; }
+
+#partnerPhotoDialog { border:0; border-radius:16px; padding:24px; width:min(520px,calc(100% - 28px)); max-height:90vh; overflow:auto; color:#18364d; }
+#partnerPhotoDialog::backdrop { background:#18364d88; }
+#partnerPhotoPreview { display:block; width:180px; height:180px; object-fit:contain; background:#f1f6fb; border-radius:12px; margin:16px auto; }
+#partnerPhotoPreview[hidden] { display:none; }

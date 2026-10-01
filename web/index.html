@@ -10,10 +10,10 @@
 <meta name="robots" content="noindex,nofollow">
 <meta name="theme-color" content="#0879b7">
 <title>Delivery Platform</title>
-<link rel="stylesheet" href="styles.css?v=20261001-access">
+<link rel="stylesheet" href="styles.css?v=20261001-photo">
 <script src="notifications.js?v=20260930-cleanup" defer>
 </script>
-<script src="app.js?v=20261001-access" defer>
+<script src="app.js?v=20261001-photo" defer>
 </script>
 <link rel="stylesheet" href="notifications.css?v=20260930-cleanup">
 </head>
@@ -184,8 +184,13 @@
 </section>
 <footer>Developed &amp; maintained by <a href="https://learnwithchampak.live">Champak Roy</a>
 </footer>
+<dialog id="partnerPhotoDialog" aria-labelledby="partnerPhotoTitle"><h2 id="partnerPhotoTitle">Partner photo</h2>
+<p>JPG, PNG or WebP, smaller than 500 KB. Maximum 4096 pixels per side. Photos are available to signed-in admins.</p>
+<img id="partnerPhotoPreview" alt="Delivery partner photo preview" hidden>
+<label>Choose photo<input id="partnerPhotoFile" type="file" accept="image/jpeg,image/png,image/webp"></label>
+<p id="partnerPhotoMessage" role="status" aria-live="polite"></p><div class="partner-actions"><button id="partnerPhotoClose" type="button" class="secondary">Close</button><button id="partnerPhotoDelete" type="button" class="danger">Remove photo</button><button id="partnerPhotoSave" type="button">Save photo</button></div></dialog>
 </main>
-<script src="password-ui.js?v=20261001-access" defer></script>
+<script src="password-ui.js?v=20261001-photo" defer></script>
 </body>
 </html>
 

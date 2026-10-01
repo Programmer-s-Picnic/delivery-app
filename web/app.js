@@ -291,7 +291,8 @@ function renderPartnerList(){
  };
  const access=document.createElement('button');access.type='button';access.className='secondary';access.textContent='Sign in as partner';
  access.onclick=async()=>{access.disabled=true;try{const result=await request('admin','POST',{operation:'partner-access',id:Number(p.id)},'admin');partnerToken=result.token;adminAsPartner=true;$('partnerLogin').hidden=true;$('partnerArea').hidden=false;document.querySelectorAll('[data-view]').forEach(button=>{if(button.dataset.view==='partner')button.click();});$('partnerAdminBanner').textContent='Administrator viewing '+result.name+' · expires with your admin session';$('partnerAdminBanner').hidden=false;await loadPartner();note('Signed in as '+result.name+'.');}catch(e){partnerFeedback(e.message,true);}finally{access.disabled=false;}};
- controls.append(update,remove,access);td.append(controls);tr.append(td);body.append(tr);}
+ const photo=document.createElement('button');photo.type='button';photo.className='secondary';photo.textContent='Photo';photo.onclick=()=>openPartnerPhoto(p);
+ controls.append(update,remove,access,photo);td.append(controls);tr.append(td);body.append(tr);}
  table.append(body);root.append(table);
 }
 $('newPartner').onclick=()=>openPartner();$('partnerSearch').oninput=renderPartnerList;$('partnerFilter').onchange=renderPartnerList;
@@ -508,3 +509,26 @@ async function resumeAdmin(){
 if(adminSession.token)resumeAdmin();
 
 window.addEventListener('admin-session-ended',()=>{if(adminAsPartner)$('logoutPartner').click();});
+
+let photoPartner=null,photoImage=null,photoBusy=false,photoGeneration=0;
+async function openPartnerPhoto(partner){
+ photoPartner=partner;photoImage=null;const generation=++photoGeneration;
+ $('partnerPhotoTitle').textContent='Photo · '+partner.name;$('partnerPhotoFile').value='';$('partnerPhotoPreview').hidden=true;$('partnerPhotoSave').disabled=true;$('partnerPhotoDelete').disabled=true;$('partnerPhotoMessage').textContent='Loading photo…';$('partnerPhotoDialog').showModal();
+ try{const result=await request('admin','POST',{operation:'partner-photo-get',id:Number(partner.id)},'admin');if(generation!==photoGeneration)return;if(result.photo){$('partnerPhotoPreview').src=result.photo;$('partnerPhotoPreview').hidden=false;$('partnerPhotoDelete').disabled=false;}$('partnerPhotoMessage').textContent=result.photo?'Choose a new image to replace this photo.':'No photo saved. Choose an image to upload.';}catch(e){if(generation===photoGeneration)$('partnerPhotoMessage').textContent=e.message;}
+}
+$('partnerPhotoFile').onchange=async()=>{
+ const file=$('partnerPhotoFile').files[0];const generation=++photoGeneration;photoImage=null;$('partnerPhotoSave').disabled=true;if(!file)return;
+ if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>512000){$('partnerPhotoMessage').textContent='Choose a JPG, PNG or WebP image smaller than 500 KB.';return;}
+ try{const image=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result));reader.onerror=reject;reader.readAsDataURL(file);});if(generation!==photoGeneration)return;photoImage=image.split(',')[1];$('partnerPhotoPreview').src=image;$('partnerPhotoPreview').hidden=false;$('partnerPhotoSave').disabled=false;$('partnerPhotoMessage').textContent='Preview ready. Choose Save photo to upload.';}catch{$('partnerPhotoMessage').textContent='Could not read the photo. Choose it again.';}
+};
+async function savePartnerPhoto(remove=false){
+ if(photoBusy||!photoPartner||(!remove&&!photoImage))return;if(remove&&!confirm('Remove the saved photo for '+photoPartner.name+'?'))return;
+ const partner=photoPartner;photoBusy=true;$('partnerPhotoSave').disabled=$('partnerPhotoDelete').disabled=$('partnerPhotoFile').disabled=true;$('partnerPhotoMessage').textContent='Saving…';
+ try{await request('admin','POST',{operation:remove?'partner-photo-delete':'partner-photo-save',id:Number(partner.id),...(!remove?{image:photoImage}:{})},'admin');$('partnerPhotoMessage').textContent=remove?'Photo removed successfully.':'Photo saved successfully.';partnerFeedback((remove?'Photo removed':'Photo saved')+' for '+partner.name+'.');if(remove){$('partnerPhotoPreview').hidden=true;photoImage=null;}$('partnerPhotoFile').value='';}
+ catch(e){$('partnerPhotoMessage').textContent=e.message;}finally{photoBusy=false;$('partnerPhotoSave').disabled=!photoImage;$('partnerPhotoDelete').disabled=$('partnerPhotoPreview').hidden;$('partnerPhotoFile').disabled=false;}
+}
+$('partnerPhotoSave').onclick=()=>savePartnerPhoto();$('partnerPhotoDelete').onclick=()=>savePartnerPhoto(true);
+$('partnerPhotoClose').onclick=()=>{if(!photoBusy)$('partnerPhotoDialog').close();};
+$('partnerPhotoDialog').addEventListener('cancel',e=>{if(photoBusy)e.preventDefault();});
+$('partnerPhotoDialog').addEventListener('close',()=>{photoGeneration++;photoImage=null;photoPartner=null;$('partnerPhotoPreview').removeAttribute('src');$('partnerPhotoFile').value='';});
+window.addEventListener('admin-session-ended',()=>{$('partnerPhotoDialog').close();});
