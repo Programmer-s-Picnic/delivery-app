@@ -430,3 +430,8 @@ button.danger { background:#ffebe8; color:#9b251d; }
 .order[data-status="out_for_delivery"],.stage-out_for_delivery { --stage-color:#007d83; --stage-bg:#eafafa; --stage-text:#00656c; }
 .order[data-status="delivered"],.stage-delivered { --stage-color:#218345; --stage-bg:#edf9f0; --stage-text:#186c40; }
 .order[data-status="cancelled"],.stage-cancelled { --stage-color:#bd3535; --stage-bg:#fff0ef; --stage-text:#9b251d; }
+
+.admin-password-dialog { width:min(480px,calc(100% - 28px)); border:0; border-radius:16px; padding:24px; max-height:90vh; overflow:auto; color:#18364d; }
+.admin-password-dialog label { display:block; margin:14px 0; }
+.admin-password-dialog input { display:block; width:100%; margin-top:5px; }
+.admin-password-dialog::backdrop { background:#18364d88; }

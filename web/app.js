@@ -1,7 +1,7 @@
 'use strict';
 const API='https://cserver.learnwithchampak.live/delivery/api/', $=id=>document.getElementById(id);
 const adminSession=window.AdminSession;
-let customerToken='',partnerToken='';
+let customerToken='',partnerToken='',adminAsPartner=false;
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({
   '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
 }[c]));
@@ -289,7 +289,9 @@ function renderPartnerList(){
   try{await request('admin','POST',{operation:'partner-delete',id:Number(p.id)},'admin');partnerRecords=partnerRecords.filter(x=>x!==p);renderPartnerList();partnerFeedback('Partner '+p.name+' deleted successfully.');try{await loadAdmin();}catch{partnerFeedback('Partner deleted. Could not refresh deliveries; choose Refresh.');}}
   catch(e){partnerFeedback(e.message,true);}finally{partnerBusy=false;renderPartnerList();}
  };
- controls.append(update,remove);td.append(controls);tr.append(td);body.append(tr);}
+ const access=document.createElement('button');access.type='button';access.className='secondary';access.textContent='Sign in as partner';
+ access.onclick=async()=>{access.disabled=true;try{const result=await request('admin','POST',{operation:'partner-access',id:Number(p.id)},'admin');partnerToken=result.token;adminAsPartner=true;$('partnerLogin').hidden=true;$('partnerArea').hidden=false;document.querySelectorAll('[data-view]').forEach(button=>{if(button.dataset.view==='partner')button.click();});$('partnerAdminBanner').textContent='Administrator viewing '+result.name+' · expires with your admin session';$('partnerAdminBanner').hidden=false;await loadPartner();note('Signed in as '+result.name+'.');}catch(e){partnerFeedback(e.message,true);}finally{access.disabled=false;}};
+ controls.append(update,remove,access);td.append(controls);tr.append(td);body.append(tr);}
  table.append(body);root.append(table);
 }
 $('newPartner').onclick=()=>openPartner();$('partnerSearch').oninput=renderPartnerList;$('partnerFilter').onchange=renderPartnerList;
@@ -349,7 +351,7 @@ $('loginPartner').onclick=run(async()=>{
   const data=await request('partner-login','POST',{
     mobile:$('loginMobile').value.trim(),password:$('loginPassword').value
   });
-  partnerToken=data.token;
+  partnerToken=data.token;adminAsPartner=false;$('partnerAdminBanner').hidden=true;
   $('loginPassword').value='';
   $('partnerLogin').hidden=true;
   $('partnerArea').hidden=false;
@@ -357,7 +359,7 @@ $('loginPartner').onclick=run(async()=>{
   note('Signed in')
 });
 $('logoutPartner').onclick=()=>{
-  partnerToken='';
+  partnerToken='';adminAsPartner=false;$('partnerAdminBanner').hidden=true;
   $('partnerArea').hidden=true;
   $('partnerLogin').hidden=false;
   $('partnerOrders').replaceChildren();
@@ -504,3 +506,5 @@ async function resumeAdmin(){
   }
 }
 if(adminSession.token)resumeAdmin();
+
+window.addEventListener('admin-session-ended',()=>{if(adminAsPartner)$('logoutPartner').click();});
