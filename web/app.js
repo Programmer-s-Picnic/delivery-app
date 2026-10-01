@@ -78,6 +78,7 @@ async function loadAdmin(focusId=null){
     operation:'list'
   },'admin');
   if(!token||adminSession.token!==token)return;
+  partnerRecords=data.partners;renderPartnerList();
   $('adminOrders').replaceChildren();
   for(const o of data.orders){
     const article=document.createElement('article');
@@ -260,14 +261,57 @@ $('manualImport').onclick=run(async()=>{
   note('Delivery '+result.id+(result.existing?' already exists':' created'));
   await loadAdmin(Number(result.id))
 });
-$('createPartner').onclick=run(async()=>{
-  await request('admin','POST',{
-    operation:'partner-create',name:$('partnerName').value.trim(),mobile:$('partnerMobile').value.trim(),password:$('partnerPassword').value
-  },'admin');
-  $('partnerPassword').value='';
-  note('Partner account created');
-  await loadAdmin()
-});
+let partnerRecords=[],editingPartner=null,partnerBusy=false;
+function partnerFeedback(text,error=false){$('partnerFeedback').textContent=text;$('partnerFeedback').className=error?'error':'notice';}
+function openPartner(record=null){
+ editingPartner=record;$('partnerFormTitle').textContent=record?'Update delivery partner':'Add delivery partner';
+ $('partnerName').value=record?.name||'';$('partnerMobile').value=record?.mobile||'';$('partnerPassword').value='';$('partnerActive').value=record&& !Number(record.active)?'no':'yes';
+ $('partnerActiveLabel').hidden=!record;$('partnerPasswordHelp').textContent=record?'Leave password blank to keep the existing password. Changing it signs the partner out.':'Use 12–256 characters.';
+ $('createPartner').textContent=record?'Save changes':'Create partner';$('partnerFormError').textContent='';
+ for(const key of ['Name','Mobile','Password']){$('partner'+key+'Error').textContent='';$('partner'+key).setAttribute('aria-invalid','false');}
+ $('partnerDialog').showModal();$('partnerName').focus();
+}
+function renderPartnerList(){
+ const root=$('partnerList');root.replaceChildren();const query=$('partnerSearch').value.trim().toLowerCase(),filter=$('partnerFilter').value||'all';
+ const rows=partnerRecords.filter(p=>(p.name+' '+p.mobile+' '+p.id).toLowerCase().includes(query)&&(filter==='all'||Boolean(Number(p.active))===(filter==='active')));
+ $('partnerCount').textContent=rows.length+' of '+partnerRecords.length+' partners · '+partnerRecords.filter(p=>Number(p.active)).length+' active';
+ if(!rows.length){root.textContent='No matching partners. Add a partner or change the filters.';return;}
+ const table=document.createElement('table');table.className='partner-grid';const head=document.createElement('thead'),row=document.createElement('tr');
+ for(const label of ['ID','Name','Mobile','Status','Actions']){const th=document.createElement('th');th.textContent=label;th.setAttribute('scope','col');row.append(th);}head.append(row);table.append(head);const body=document.createElement('tbody');
+ for(const p of rows){const tr=document.createElement('tr');for(const text of [p.id,p.name,p.mobile,Number(p.active)?'Active':'Inactive']){const td=document.createElement('td');td.textContent=text;tr.append(td);}
+ const td=document.createElement('td');const controls=document.createElement('div');controls.className='partner-actions';
+ const update=document.createElement('button');update.type='button';update.className='secondary';update.textContent='Update';update.onclick=()=>openPartner(p);
+ const remove=document.createElement('button');remove.type='button';remove.className='danger';remove.textContent='Delete';remove.disabled=partnerBusy;
+ remove.onclick=async()=>{
+  if(partnerBusy||!confirm('Delete '+p.name+' ('+p.mobile+')? Accounts with delivery history must be deactivated instead.'))return;
+  partnerBusy=true;renderPartnerList();
+  try{await request('admin','POST',{operation:'partner-delete',id:Number(p.id)},'admin');partnerRecords=partnerRecords.filter(x=>x!==p);renderPartnerList();partnerFeedback('Partner '+p.name+' deleted successfully.');try{await loadAdmin();}catch{partnerFeedback('Partner deleted. Could not refresh deliveries; choose Refresh.');}}
+  catch(e){partnerFeedback(e.message,true);}finally{partnerBusy=false;renderPartnerList();}
+ };
+ controls.append(update,remove);td.append(controls);tr.append(td);body.append(tr);}
+ table.append(body);root.append(table);
+}
+$('newPartner').onclick=()=>openPartner();$('partnerSearch').oninput=renderPartnerList;$('partnerFilter').onchange=renderPartnerList;
+$('partnerCancel').onclick=()=>{if(!partnerBusy)$('partnerDialog').close();};
+$('partnerDialog').addEventListener('cancel',e=>{if(partnerBusy)e.preventDefault();});
+$('partnerDialog').addEventListener('close',()=>{$('partnerPassword').value='';});
+$('partnerForm').onsubmit=async event=>{
+ event.preventDefault();if(partnerBusy)return;
+ const name=$('partnerName').value.trim(),mobile=$('partnerMobile').value.trim(),password=$('partnerPassword').value;
+ const errors={};if(new TextEncoder().encode(name).length<2||new TextEncoder().encode(name).length>120)errors.Name='Enter a name between 2 and 120 bytes.';
+ if(!/^[6-9][0-9]{9}$/.test(mobile))errors.Mobile='Enter a 10-digit Indian mobile number starting with 6–9.';
+ const bytes=new TextEncoder().encode(password).length;if((!editingPartner||password!=='')&&(bytes<12||bytes>256))errors.Password='Password must contain 12–256 bytes.';
+ for(const key of ['Name','Mobile','Password']){$('partner'+key+'Error').textContent=errors[key]||'';$('partner'+key).setAttribute('aria-invalid',errors[key]?'true':'false');}
+ if(Object.keys(errors).length){$('partnerFormError').textContent='Please correct the highlighted fields.';$('partner'+Object.keys(errors)[0]).focus();return;}
+ partnerBusy=true;$('createPartner').disabled=true;$('partnerFormError').textContent='Saving…';
+ try{
+  const editing=!!editingPartner;const result=await request('admin','POST',{operation:editing?'partner-update':'partner-create',...(editing?{id:Number(editingPartner.id),active:$('partnerActive').value==='yes'}:{}),name,mobile,password},'admin');
+  if(editing)Object.assign(editingPartner,{name,mobile,active:$('partnerActive').value==='yes'?1:0});else partnerRecords.push({id:result.id,name,mobile,active:1});
+  $('partnerPassword').value='';$('partnerDialog').close();renderPartnerList();partnerFeedback('Partner '+name+(editing?' updated':' created')+' successfully.');
+  try{await loadAdmin();}catch{partnerFeedback('Partner saved successfully. Could not refresh deliveries; choose Refresh.');}
+ }catch(e){$('partnerFormError').textContent=e.message||'Could not save partner.';}finally{partnerBusy=false;$('createPartner').disabled=false;}
+};
+window.addEventListener('admin-session-ended',()=>{partnerRecords=[];$('partnerList').replaceChildren();$('partnerCount').textContent='';$('partnerFeedback').textContent='';$('partnerDialog').close();});
 $('customerLogin').onclick=run(async()=>{
   customerToken=$('customerToken').value.trim();
   await loadCustomer();

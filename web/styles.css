@@ -402,3 +402,20 @@ dialog::backdrop {
 .order-tools label {
   width:100%}
 }
+
+.partner-management { margin:28px 0; padding:22px; border:1px solid #d9e5ef; border-radius:16px; background:#f6faff; }
+.partner-heading { display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap; }
+.partner-heading h3 { margin:0; font-size:23px; }
+.partner-heading p { color:#587084; }
+#partnerList { max-height:480px; overflow:auto; border:1px solid #d9e5ef; border-radius:10px; background:white; }
+.partner-grid { border-collapse:collapse; width:100%; }
+.partner-grid th,.partner-grid td { text-align:left; padding:12px 16px; border-bottom:1px solid #d9e5ef; }
+.partner-grid thead { background:#e8f2fc; position:sticky; top:0; }
+.partner-grid tbody tr:nth-child(even) { background:#f6faff; }
+.partner-actions { display:flex; gap:8px; flex-wrap:wrap; }
+button.danger { background:#ffebe8; color:#9b251d; }
+#partnerDialog { width:min(650px,calc(100% - 28px)); max-height:90vh; overflow:auto; border:0; border-radius:16px; padding:24px; color:#18364d; }
+#partnerDialog::backdrop { background:#18364d88; }
+#partnerDialog small,#partnerFormError { color:#9b251d; }
+#partnerDialog [aria-invalid=true] { border:2px solid #b62b24; }
+#partnerFeedback:empty,#partnerFormError:empty { display:none; }

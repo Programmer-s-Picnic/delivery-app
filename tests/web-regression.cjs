@@ -17,7 +17,7 @@ function harness(html){
  const all=[];const document={hidden:false,head:new Element(),body:new Element(),getElementById:id=>nodes[id]||all.find(n=>n.id===id),createElement:tag=>{const n=new Element(tag);all.push(n);return n},createTextNode:text=>text,querySelectorAll:()=>[],addEventListener(){}};
  const memory=new Map(),storage={getItem:k=>memory.get(k)||null,setItem:(k,v)=>memory.set(k,String(v)),removeItem:k=>memory.delete(k)};
  const events={},timers=[];const window={addEventListener:(n,f)=>(events[n]??=[]).push(f),dispatchEvent:e=>(events[e.type]||[]).forEach(f=>f())};
- const ctx={window,document,sessionStorage:storage,localStorage:storage,AbortController,URL,URLSearchParams,crypto:require('node:crypto').webcrypto,Date,Event,console,confirm:()=>true,alert(){},navigator:{},location:{search:''},setInterval:f=>{timers.push(f);return timers.length},clearInterval(){},setTimeout:f=>{timers.push(f);return timers.length},clearTimeout(){},MutationObserver:class{observe(){}disconnect(){}},FormData:class{constructor(form){this.values=form.values||{}}get(k){return this.values[k]}}};
+ const ctx={window,document,sessionStorage:storage,localStorage:storage,AbortController,URL,URLSearchParams,TextEncoder,crypto:require('node:crypto').webcrypto,Date,Event,console,confirm:()=>true,alert(){},navigator:{},location:{search:''},setInterval:f=>{timers.push(f);return timers.length},clearInterval(){},setTimeout:f=>{timers.push(f);return timers.length},clearTimeout(){},MutationObserver:class{observe(){}disconnect(){}},FormData:class{constructor(form){this.values=form.values||{}}get(k){return this.values[k]}}};
  vm.createContext(ctx);return {ctx,nodes,storage,timers,run:p=>{vm.runInContext(fs.readFileSync(path.join(base,p),'utf8'),ctx,{filename:p});if(ctx.window.AppHttp)ctx.AppHttp=ctx.window.AppHttp;if(ctx.window.AdminSession)ctx.AdminSession=ctx.window.AdminSession;if(ctx.window.NotificationInbox)ctx.NotificationInbox=ctx.window.NotificationInbox;}};
 }
 const tick=()=>new Promise(r=>setImmediate(r));
@@ -48,6 +48,14 @@ const tick=()=>new Promise(r=>setImmediate(r));
  }else{
   // Entire delivery application executes; admin inbox must never reference a deleted password.
   h.run('web/app.js');await tick();await tick();assert.ok(calls.some(c=>c.url.includes('audience=admin')));const call=calls.find(c=>c.url.includes('audience=admin'));assert.equal(call.options.headers['X-Admin-Session'],'signed-token');assert.equal(call.options.headers['X-Admin-Password'],undefined);
+  await h.nodes.newPartner.fire('click');assert.equal(h.nodes.partnerDialog.open,true);
+  h.nodes.partnerName.value='';h.nodes.partnerMobile.value='123';h.nodes.partnerPassword.value='short';await h.nodes.partnerForm.fire('submit');assert.ok(h.nodes.partnerMobileError.textContent);assert.equal(h.nodes.partnerDialog.open,true);
+  h.ctx.fetch=async(url,options)=>{calls.push({url,options});const b=options?.body?JSON.parse(options.body):{};return {ok:true,status:200,json:async()=>b.operation==='partner-create'?{id:9}:b.operation==='list'?{orders:[],partners:[{id:9,name:'Test Partner',mobile:'9876543210',active:1}]}:{notifications:[],unreadCount:0}}};
+  h.nodes.partnerName.value='Test Partner';h.nodes.partnerMobile.value='9876543210';h.nodes.partnerPassword.value='long-test-password';await h.nodes.partnerForm.fire('submit');
+  assert.equal(h.nodes.partnerDialog.open,false);assert.ok(h.nodes.partnerFeedback.textContent.includes('created successfully'));assert.equal(h.nodes.partnerPassword.value,'');
+  h.nodes.partnerSearch.value='no match';await h.nodes.partnerSearch.fire('input');assert.equal(h.nodes.partnerCount.textContent,'0 of 1 partners · 1 active');
+  vm.runInContext('openPartner(partnerRecords[0])',h.ctx);h.nodes.partnerName.value='Updated Partner';h.nodes.partnerPassword.value='';await h.nodes.partnerForm.fire('submit');assert.ok(calls.some(c=>c.options.body&&JSON.parse(c.options.body).operation==='partner-update'));
+
  }
  console.log((easy?'Easy Mandi':'Delivery')+' session, notifications and feature regressions passed');
 })().catch(e=>{console.error(e);process.exitCode=1});

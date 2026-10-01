@@ -10,10 +10,10 @@
 <meta name="robots" content="noindex,nofollow">
 <meta name="theme-color" content="#0879b7">
 <title>Delivery Platform</title>
-<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="styles.css?v=20261001-partners">
 <script src="notifications.js?v=20260930-cleanup" defer>
 </script>
-<script src="app.js?v=20260930-cleanup" defer>
+<script src="app.js?v=20261001-partners" defer>
 </script>
 <link rel="stylesheet" href="notifications.css?v=20260930-cleanup">
 </head>
@@ -108,16 +108,20 @@
 </div>
 <button id="manualImport">Create from pasted/uploaded cart</button>
 <p class="note">Manual carts contain items and quantities only. Payment amounts are not accepted from uploaded files. Customers must sign in with the same mobile number to see their delivery.</p>
-<h3>Create delivery person account</h3>
-<div class="form-grid">
-<label>Name<input id="partnerName">
-</label>
-<label>Mobile<input id="partnerMobile" inputmode="tel">
-</label>
-<label>Password (12+ characters)<input id="partnerPassword" type="password">
-</label>
-</div>
-<button id="createPartner">Create partner</button>
+<section class="partner-management" aria-labelledby="partnerManagementTitle">
+<div class="partner-heading"><div><h3 id="partnerManagementTitle">Delivery partners</h3><p>Manage accounts and availability. Changes are saved directly to the server.</p></div><button id="newPartner" type="button">Add partner</button></div>
+<p id="partnerFeedback" role="status" aria-live="polite"></p>
+<div class="order-tools"><label>Search partners<input id="partnerSearch" type="search" placeholder="Name, mobile or ID"></label><label>Account status<select id="partnerFilter"><option value="all">All partners</option><option value="active">Active</option><option value="inactive">Inactive</option></select></label></div>
+<p id="partnerCount"></p><div id="partnerList" tabindex="0" role="region" aria-label="Delivery partner records"></div>
+<dialog id="partnerDialog" aria-labelledby="partnerFormTitle"><form id="partnerForm" novalidate>
+<h3 id="partnerFormTitle">Add delivery partner</h3><p id="partnerFormError" role="alert"></p>
+<div class="form-grid"><label>Name<input id="partnerName" maxlength="120" autocomplete="name"><small id="partnerNameError"></small></label>
+<label>Mobile<input id="partnerMobile" inputmode="tel" maxlength="10" autocomplete="tel"><small id="partnerMobileError"></small></label>
+<label>Password<input id="partnerPassword" type="password" autocomplete="new-password" maxlength="256"><small id="partnerPasswordError"></small></label>
+<label id="partnerActiveLabel">Account status<select id="partnerActive"><option value="yes">Active</option><option value="no">Inactive</option></select></label></div>
+<p id="partnerPasswordHelp">Use 12–256 characters.</p>
+<div class="partner-actions"><button id="partnerCancel" type="button" class="secondary">Cancel</button><button id="createPartner" type="submit">Create partner</button></div>
+</form></dialog></section>
 <h3>Deliveries</h3>
 <div class="order-tools">
 <label>Find a delivery<input id="deliverySearch" type="search" placeholder="Order ID, customer or address">
