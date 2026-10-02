@@ -57,5 +57,18 @@ const tick=()=>new Promise(r=>setImmediate(r));
   vm.runInContext('openPartner(partnerRecords[0])',h.ctx);h.nodes.partnerName.value='Updated Partner';h.nodes.partnerPassword.value='';await h.nodes.partnerForm.fire('submit');assert.ok(calls.some(c=>c.options.body&&JSON.parse(c.options.body).operation==='partner-update'));
 
  }
+ if(!easy){
+  const jobs=['assigned','out_for_delivery','delivered','cancelled'].map((status,i)=>({id:i+1,external_order_id:'R'+i,status,customer_name:'Customer',address_text:'Lanka',customer_mobile:'9876543210'}));
+  h.ctx.fetch=async()=>({ok:true,status:200,json:async()=>({orders:jobs,notifications:[]})});
+  await vm.runInContext('loadPartner()',h.ctx);
+  const buttons=h.nodes.partnerOrders.children.map(card=>card.children.find(n=>n.textContent==='Call customer'));
+  assert.equal(buttons[0].disabled,false);assert.equal(buttons[1].disabled,false);assert.equal(buttons[2].disabled,true);assert.equal(buttons[3].disabled,true);
+  const adminOrder={id:7,external_order_id:'TEST-7',customer_name:'Customer',address_text:'Lanka',partner_id:9,status:'out_for_delivery'};
+  h.ctx.fetch=async(url,options)=>({ok:true,status:200,json:async()=>({orders:[adminOrder],partners:[{id:9,name:'Current',mobile:'9876543210',active:1},{id:10,name:'Replacement',mobile:'9876543211',active:1}]})});
+  await vm.runInContext('loadAdmin()',h.ctx);
+  const change=h.nodes.adminOrders.children[0].children.find(n=>n.textContent==='Change delivery partner');assert.ok(change);assert.equal(change.disabled,false);
+  adminOrder.status='delivered';await vm.runInContext('loadAdmin()',h.ctx);assert.equal(h.nodes.adminOrders.children[0].children.find(n=>n.textContent==='Change delivery partner').disabled,true);
+ }
  console.log((easy?'Easy Mandi':'Delivery')+' session, notifications and feature regressions passed');
 })().catch(e=>{console.error(e);process.exitCode=1});
+

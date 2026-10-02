@@ -103,14 +103,21 @@ async function loadAdmin(focusId=null){
       select.append(option)
     }select.value=String(o.partner_id??'');
     const assign=document.createElement('button');
-    assign.textContent='Assign';
+    assign.textContent=o.partner_id?'Change delivery partner':'Assign partner';
+    const unfinished=['created','assigned','picked_up','out_for_delivery'].includes(o.status);
+    assign.disabled=!unfinished;select.disabled=!unfinished;
     assign.onclick=run(async()=>{
       if(!select.value)throw Error('Select a delivery person');
-      await request('admin','POST',{
-        operation:'assign',id:Number(o.id),partner_id:Number(select.value)
+      if(o.partner_id&&Number(select.value)!==Number(o.partner_id)&&!confirm('Change the delivery partner? The order returns to Assigned and a new customer code is sent.'))return;
+      assign.disabled=true;
+      try{const result=await request('admin','POST',{
+        operation:'assign',id:Number(o.id),partner_id:Number(select.value),previous_partner_id:Number(o.partner_id||0)
       },'admin');
-      note('Partner assigned');
-      await loadAdmin(Number(o.id))
+      await loadAdmin(Number(o.id));
+      const updated=[...$('adminOrders').children].find(card=>card.dataset.orderId===String(o.id));
+      if(result.code&&updated)showCustomerCode(updated,o.external_order_id,result);
+      note(result.changed?(result.reassigned?'Partner changed. New code sent to customer notifications.':'Partner assigned. Code sent to customer notifications.'):'This partner is already assigned.');
+      }finally{assign.disabled=!unfinished;}
     });
     article.append(title,details,select,assign);
     if(o.location_lat!=null&&o.location_lng!=null){
@@ -122,21 +129,13 @@ async function loadAdmin(focusId=null){
       article.append(map)
     }if(['assigned','picked_up','out_for_delivery'].includes(o.status)){
       const issue=document.createElement('button');
-      issue.textContent='Issue customer code';
+      issue.textContent='Send a new customer code';
       issue.onclick=run(async()=>{
         const result=await request('admin','POST',{
           operation:'issue-code',id:Number(o.id)
         },'admin');
-        const msg='Your delivery '+o.external_order_id+' handoff code is '+result.code+'. Give it to the delivery person only after receiving your order. This code expires in 24 hours.';
-        const link=document.createElement('a');
-        link.href='https://wa.me/91'+result.customer_mobile+'?text='+encodeURIComponent(msg);
-        link.target='_blank';
-        link.rel='noopener noreferrer';
-        link.textContent='Send code to customer by WhatsApp';
-        const p=document.createElement('p');
-        p.textContent='Code: '+result.code+' · Send it now. It will not be shown again.';
-        article.append(p,link);
-        note('Code issued. Use the WhatsApp link to send it to the customer.')
+        showCustomerCode(article,o.external_order_id,result);
+        note('New code sent to customer notifications. WhatsApp sharing is also available.');
       });
       article.append(issue)
     }const inspect=document.createElement('button');
@@ -344,11 +343,11 @@ async function loadCustomer(){
     let title=document.createElement('h4');
     title.textContent=o.external_order_id+' · '+({created:'Unassigned',assigned:'Assigned',picked_up:'Picked up',out_for_delivery:'Out for delivery',delivered:'Delivered',cancelled:'Cancelled'}[o.status]||o.status);
     let p=document.createElement('p');
-    p.textContent='Track this order here. The admin sends the handoff code separately.';
+    p.textContent='Your handoff code is sent to notifications when a partner is assigned.';
     article.append(title,p);
     if(['assigned','picked_up','out_for_delivery'].includes(o.status)){
       let hint=document.createElement('p');
-      hint.textContent='The admin will send your handoff code. Give it to the delivery person only after receiving your order.';
+      hint.textContent='Check notifications for your handoff code. Give it to the delivery person only after receiving your order.';
       article.append(hint)
     }$('customerOrders').append(article)
   }if(!data.orders.length)$('customerOrders').textContent='No delivery orders linked to this account.';
@@ -393,7 +392,7 @@ async function loadPartner(){
       map.textContent='Navigate to customer';
       article.append(map)
     }
-    if(/^[6-9][0-9]{9}$/.test(o.customer_mobile||'')){const call=document.createElement('a');call.href='tel:+91'+o.customer_mobile;call.className='action-link';call.textContent='Call customer';article.append(call);}
+    if(/^[6-9][0-9]{9}$/.test(o.customer_mobile||'')){const call=document.createElement('button');call.type='button';call.className='action-link';call.textContent='Call customer';call.disabled=o.status==='delivered'||o.status==='cancelled';call.title=call.disabled?'Calling is disabled after delivery completion or cancellation':'Call customer';call.onclick=()=>{if(!call.disabled)window.location.href='tel:+91'+o.customer_mobile;};article.append(call);}
     const next={
       assigned:'picked_up',picked_up:'out_for_delivery'
     }[o.status];
@@ -537,3 +536,10 @@ $('partnerPhotoClose').onclick=()=>{if(!photoBusy)$('partnerPhotoDialog').close(
 $('partnerPhotoDialog').addEventListener('cancel',e=>{if(photoBusy)e.preventDefault();});
 $('partnerPhotoDialog').addEventListener('close',()=>{photoGeneration++;photoImage=null;photoPartner=null;$('partnerPhotoPreview').removeAttribute('src');$('partnerPhotoFile').value='';});
 window.addEventListener('admin-session-ended',()=>{$('partnerPhotoDialog').close();});
+
+
+function showCustomerCode(article,reference,result){
+ const msg='Your delivery '+reference+' handoff code is '+result.code+'. Give it to the delivery person only after receiving your order. This code expires in 24 hours.';
+ const link=document.createElement('a');link.href='https://wa.me/91'+result.customer_mobile+'?text='+encodeURIComponent(msg);link.target='_blank';link.rel='noopener noreferrer';link.textContent='Also send code by WhatsApp';
+ const text=document.createElement('p');text.textContent='Code: '+result.code+' · Sent to customer notifications. This replaces any earlier code.';article.append(text,link);
+}
