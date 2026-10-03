@@ -27,3 +27,11 @@ The server health check and unauthorized request responses have been verified. A
 Easy Mandi accounts do not currently verify ownership of a mobile number. For this reason the handoff code is issued only by the admin and must be sent to the intended customer through a trusted channel. Customer account tracking returns limited order status. Notification records are in-app inbox data refreshed by the clients; push alerts and automatic SMS are not implemented.
 
 See [API contract](docs/easymandi-handoff.md) and [server schema](https://github.com/Programmer-s-Picnic/cserver/blob/main/delivery/database/schema.sql).
+
+## Easy Mandi payment status
+
+For Easy Mandi-sourced deliveries, the delivery service reads the payment record from the Easy Mandi backend. Delivery admin, customer tracking and the partner app show the payment method/status and order amount.
+
+- A **UPI** delivery cannot complete handoff until Easy Mandi admin verifies the submitted receipt.
+- A **COD** delivery is marked paid automatically when the assigned partner successfully enters the customer's handoff code.
+- Manual pasted/uploaded carts remain delivery-only records and do not accept a payment amount.
