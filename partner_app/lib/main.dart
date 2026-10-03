@@ -115,14 +115,24 @@ class _JobsPageState extends State<JobsPage> {
               if(RegExp(r'^[6-9][0-9]{9}$').hasMatch('${o['customer_mobile']??''}')) OutlinedButton.icon(
                 onPressed:status=='delivered'||status=='cancelled'?null:() async {try{final opened=await launchUrl(Uri(scheme:'tel',path:"+91${o['customer_mobile']}"));if(!opened&&context.mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Could not open phone dialer.')));}catch(_){if(context.mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Could not open phone dialer.')));}},
                 icon:const Icon(Icons.call),label:const Text('Call customer')),
-              Text('Status: $status'),Text(o['customer_name'] as String),Text(o['address_text'] as String),
+              Text('Status: $status'),
+              if(o['payment_method']!=null) Text(
+                'Payment: ${(o['payment_method']??'').toString().toUpperCase()} · ${(o['payment_status']??'pending').toString().replaceAll('_',' ')}'
+                '${o['payment_total']==null?'':' · ₹${(o['payment_total'] as num).toStringAsFixed(2)}'}',
+                style:TextStyle(fontWeight:FontWeight.w700,
+                  color:o['payment_method']=='upi'&&o['payment_status']!='verified'?Colors.deepOrange:Colors.green.shade800)),
+              if(o['payment_method']=='upi'&&o['payment_status']!='verified') const Padding(
+                padding:EdgeInsets.only(top:4,bottom:4),
+                child:Text('UPI receipt is not verified. Do not hand over the order yet.',style:TextStyle(color:Colors.deepOrange,fontWeight:FontWeight.w700))),
+              Text(o['customer_name'] as String),Text(o['address_text'] as String),
               if(o['location_lat']!=null&&o['location_lng']!=null) TextButton.icon(
                 onPressed:() async {final uri=Uri.https('www.google.com','/maps/search/',{'api':'1','query':"${o['location_lat']},${o['location_lng']}"});await launchUrl(uri,mode:LaunchMode.externalApplication);},
                 icon:const Icon(Icons.navigation_outlined),label:const Text('Navigate to customer')),
               if(next!=null)FilledButton(onPressed:()=>change(id,'status',status:next),
                 child:Text('Mark ${next.replaceAll('_',' ')}')),
-              if(status=='out_for_delivery')FilledButton(onPressed:()=>confirm(id),
-                child:const Text('Enter customer code'))
+              if(status=='out_for_delivery')FilledButton(
+                onPressed:o['payment_method']=='upi'&&o['payment_status']!='verified'?null:()=>confirm(id),
+                child:Text(o['payment_method']=='upi'&&o['payment_status']!='verified'?'UPI verification required':'Enter customer code'))
             ])));
         }),
         if(notifications.isNotEmpty)TextButton(onPressed:()=>markNotifications(),child:const Text('Mark all notifications as read')),

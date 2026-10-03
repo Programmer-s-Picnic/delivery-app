@@ -206,7 +206,12 @@ async function showOrderDetail(article,id){
   if(o.source_app==='easymandi'){
     detailText(grid,'Easy Mandi order status',o.source_status);
     detailText(grid,'Easy Mandi order placed',o.source_created_at);
-    for(const [label,value] of [['Subtotal',o.source_subtotal],['Delivery fee',o.source_delivery_fee],['Order total',o.source_total]])detailText(grid,label,value===null?'Not available':'₹'+Number(value).toFixed(2))
+    for(const [label,value] of [['Subtotal',o.source_subtotal],['Delivery fee',o.source_delivery_fee],['Order total',o.source_total]])detailText(grid,label,value===null?'Not available':'₹'+Number(value).toFixed(2));
+    detailText(grid,'Payment method',String(o.payment_method||'cod').toUpperCase());
+    detailText(grid,'Payment status',String(o.payment_status||'pending').replaceAll('_',' '));
+    if(o.payment_reference)detailText(grid,'UPI reference',o.payment_reference);
+    if(o.payment_submitted_at)detailText(grid,'Receipt submitted',o.payment_submitted_at);
+    if(o.payment_verified_at)detailText(grid,'Payment verified/paid',o.payment_verified_at);
   }
   else detailText(grid,'Payment total','Not provided for manual cart');
   panel.append(grid);
@@ -345,6 +350,12 @@ async function loadCustomer(){
     let p=document.createElement('p');
     p.textContent='Your handoff code is sent to notifications when a partner is assigned.';
     article.append(title,p);
+    if(o.payment_method){
+      const payment=document.createElement('p');
+      payment.className='payment-state';
+      payment.textContent='Payment: '+String(o.payment_method).toUpperCase()+' · '+String(o.payment_status||'pending').replaceAll('_',' ')+(o.payment_total==null?'':' · ₹'+Number(o.payment_total).toFixed(2));
+      article.append(payment);
+    }
     if(['assigned','picked_up','out_for_delivery'].includes(o.status)){
       let hint=document.createElement('p');
       hint.textContent='Check notifications for your handoff code. Give it to the delivery person only after receiving your order.';
@@ -384,6 +395,17 @@ async function loadPartner(){
     let p=document.createElement('p');
     p.textContent=o.customer_name+' · '+o.address_text;
     article.append(h,p);
+    if(o.payment_method){
+      const payment=document.createElement('p');
+      payment.className='payment-state';
+      payment.textContent='Payment: '+String(o.payment_method).toUpperCase()+' · '+String(o.payment_status||'pending').replaceAll('_',' ')+(o.payment_total==null?'':' · ₹'+Number(o.payment_total).toFixed(2));
+      article.append(payment);
+      if(o.payment_method==='upi'&&o.payment_status!=='verified'){
+        const warning=document.createElement('p');warning.className='error';
+        warning.textContent='UPI payment is not verified. Do not complete handoff until admin verifies the receipt.';
+        article.append(warning);
+      }
+    }
     if(o.location_lat!=null&&o.location_lng!=null){
       const map=document.createElement('a');
       map.href='https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(o.location_lat+','+o.location_lng);
@@ -413,7 +435,9 @@ async function loadPartner(){
       input.inputMode='numeric';
       input.maxLength=6;
       let button=document.createElement('button');
-      button.textContent='Confirm handoff';
+      const paymentBlocked=o.payment_method==='upi'&&o.payment_status!=='verified';
+      button.textContent=paymentBlocked?'UPI verification required':'Confirm handoff';
+      button.disabled=paymentBlocked;
       button.onclick=run(async()=>{
         await request('partner','POST',{
           operation:'confirm',id:Number(o.id),code:input.value.trim()

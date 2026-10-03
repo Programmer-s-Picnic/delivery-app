@@ -1,0 +1,41 @@
+name: Validate payment feature
+on:
+  push:
+    branches: ['feature/payments-2026-10-03']
+    paths:
+      - 'web/**'
+      - 'partner_app/**'
+      - 'tests/**'
+      - '.github/workflows/payment-checks.yml'
+permissions:
+  contents: read
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: find web -type f -name '*.js' -print0 | xargs -0 -n1 node --check
+      - run: node tests/web-regression.cjs
+  partner:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - name: Prepare partner app
+        run: |
+          cp partner_app/pubspec.yaml /tmp/pubspec.yaml
+          cp partner_app/lib/main.dart /tmp/main.dart
+          cd partner_app
+          flutter create --platforms=android --org live.learnwithchampak .
+          cp /tmp/pubspec.yaml pubspec.yaml
+          cp /tmp/main.dart lib/main.dart
+          rm -f test/widget_test.dart analysis_options.yaml
+          flutter pub get
+          flutter analyze
+          flutter test
+          flutter build apk --release
