@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'notification_overlay.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -119,7 +118,7 @@ class _JobsPageState extends State<JobsPage> {
               Text('Status: $status'),
               if(o['payment_method']!=null) Text(
                 'Payment: ${String(o['payment_method']).toUpperCase()} · ${String(o['payment_status']??'pending').replaceAll('_',' ')}'
-                '${o['payment_total']==null?'':' · ₹${NumberFormat.simpleCurrency(locale:'en_IN',name:'INR',decimalDigits:2).format((o['payment_total'] as num).toDouble()).replaceFirst('₹','')}}',
+                '${o['payment_total']==null?'':' · ₹${(o['payment_total'] as num).toStringAsFixed(2)}'}',
                 style:TextStyle(fontWeight:FontWeight.w700,
                   color:o['payment_method']=='upi'&&o['payment_status']!='verified'?Colors.deepOrange:Colors.green.shade800)),
               if(o['payment_method']=='upi'&&o['payment_status']!='verified') const Padding(
