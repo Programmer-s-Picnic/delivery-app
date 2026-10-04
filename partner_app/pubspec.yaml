@@ -1,7 +1,7 @@
 name: delivery_partner
 description: Delivery Platform partner app.
 publish_to: none
-version: 1.2.2+9
+version: 1.3.0+10
 environment:
   sdk: '>=3.4.0 <4.0.0'
 dependencies:
@@ -9,6 +9,7 @@ dependencies:
     sdk: flutter
   url_launcher: ^6.3.1
   flutter_secure_storage: ^9.2.4
+  mobile_scanner: ^7.1.4
 dev_dependencies:
   flutter_test:
     sdk: flutter
