@@ -18,6 +18,7 @@ jobs:
         run: |
           cp partner_app/pubspec.yaml /tmp/delivery-pubspec.yaml
           cp partner_app/lib/main.dart /tmp/delivery-main.dart
+          cp partner_app/icon/ic_delivery_launcher.xml /tmp/ic_delivery_launcher.xml
           cd partner_app
           flutter create --platforms=android --org live.learnwithchampak .
           cp /tmp/delivery-pubspec.yaml pubspec.yaml
@@ -25,6 +26,10 @@ jobs:
           rm -f test/widget_test.dart analysis_options.yaml
           sed -i 's/<application/<uses-permission android:name="android.permission.INTERNET"\/><application/' android/app/src/main/AndroidManifest.xml
           sed -i 's/android:label="delivery_partner"/android:label="Delivery Partner"/' android/app/src/main/AndroidManifest.xml
+          mkdir -p android/app/src/main/res/drawable
+          cp /tmp/ic_delivery_launcher.xml android/app/src/main/res/drawable/ic_delivery_launcher.xml
+          sed -i 's#android:icon="@mipmap/ic_launcher"#android:icon="@drawable/ic_delivery_launcher"#' android/app/src/main/AndroidManifest.xml
+          sed -i 's#android:roundIcon="@mipmap/ic_launcher_round"#android:roundIcon="@drawable/ic_delivery_launcher"#' android/app/src/main/AndroidManifest.xml || true
           flutter pub get
           flutter analyze
           flutter test
