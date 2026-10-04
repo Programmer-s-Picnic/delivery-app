@@ -834,7 +834,8 @@ class _JobsPageState extends State<JobsPage> {
         ),
         const SizedBox(height: 10),
         DropdownButtonFormField<String>(
-          value: filter,
+          key: ValueKey(filter),
+          initialValue: filter,
           decoration: const InputDecoration(labelText: 'Filter deliveries'),
           items: const [
             DropdownMenuItem(value: 'active', child: Text('Active deliveries')),
