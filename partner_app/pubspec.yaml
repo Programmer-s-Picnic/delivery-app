@@ -1,7 +1,7 @@
 name: delivery_partner
 description: Delivery Platform partner app.
 publish_to: none
-version: 1.2.0+7
+version: 1.2.1+8
 environment:
   sdk: '>=3.4.0 <4.0.0'
 dependencies:
