@@ -656,28 +656,30 @@ class _JobsPageState extends State<JobsPage> {
                       label: const Text('Call customer'),
                     ),
                     OutlinedButton.icon(
-                      onPressed: hasLocation
+                      onPressed: !finished && hasLocation
                           ? () => run(() => navigate(order))
                           : null,
                       icon: const Icon(Icons.navigation_outlined),
                       label: const Text('Navigate'),
                     ),
                     OutlinedButton.icon(
-                      onPressed: () async {
-                        await Clipboard.setData(
-                          ClipboardData(
-                            text:
-                                '${order['customer_name']}\n${order['address_text']}\n+91 ${order['customer_mobile']}',
-                          ),
-                        );
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Customer address copied.'),
-                            ),
-                          );
-                        }
-                      },
+                      onPressed: finished
+                          ? null
+                          : () async {
+                              await Clipboard.setData(
+                                ClipboardData(
+                                  text:
+                                      '${order['customer_name']}\n${order['address_text']}\n+91 ${order['customer_mobile']}',
+                                ),
+                              );
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Customer address copied.'),
+                                  ),
+                                );
+                              }
+                            },
                       icon: const Icon(Icons.copy_outlined),
                       label: const Text('Copy address'),
                     ),
