@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'notification_overlay.dart';
@@ -402,52 +403,1990 @@ class _JobsPageState extends State<JobsPage> {
 
   Future<void> confirmHandoff(Map<String, dynamic> order) async {
     final controller = TextEditingController();
+    final deliveryId = (order['id'] as num).toInt();
     try {
       final code = await showDialog<String>(
         context: context,
-        builder: (dialogContext) => AlertDialog(
-          title: Text('Complete ${order['external_order_id']}'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'Ask the customer for the six-digit handoff code only after the order is physically handed over.',
+        builder: (dialogContext) => StatefulBuilder(
+          builder: (dialogContext, updateDialog) => AlertDialog(
+            title: Text('Complete ${order['external_order_id']}'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'After the order is physically handed over, enter the customer\'s six-digit code or scan the QR shown in the Easy Mandi customer app.',
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: controller,
+                  autofocus: true,
+                  keyboardType: TextInputType.number,
+                  maxLength: 6,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                    LengthLimitingTextInputFormatter(6),
+                  ],
+                  decoration:
+                      const InputDecoration(labelText: 'Six-digit customer code'),
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () async {
+                      final scanned = await Navigator.of(dialogContext).push<String>(
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              HandoffScannerPage(expectedDeliveryId: deliveryId),
+                        ),
+                      );
+                      if (scanned != null && dialogContext.mounted) {
+                        controller.text = scanned;
+                        controller.selection = TextSelection.collapsed(
+                            offset: controller.text.length);
+                        updateDialog(() {});
+                      }
+                    },
+                    icon: const Icon(Icons.qr_code_scanner),
+                    label: const Text('Scan customer QR'),
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Cancel'),
               ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: controller,
-                autofocus: true,
-                keyboardType: TextInputType.number,
-                maxLength: 6,
-                inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly,
-                  LengthLimitingTextInputFormatter(6),
+              FilledButton(
+                onPressed: () {
+                  final value = controller.text.trim();
+                  if (RegExp(r'^[0-9]{6}
+
+  void showHelp() {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('How to use Delivery Partner'),
+        content: const SingleChildScrollView(
+          child: Text(
+            '1. Open an Assigned job and review customer, address, basket and payment status.\n\n'
+            '2. Use Call customer or Navigate while the delivery is still active.\n\n'
+            '3. Mark Picked up after collecting the parcel.\n\n'
+            '4. Mark Out for delivery when leaving for the customer.\n\n'
+            '5. For UPI orders, handoff is blocked until admin verifies payment. For COD, collect the displayed amount at handoff.\n\n'
+            '6. After physically handing over the order, enter the customer\'s six-digit code or scan the QR shown in the Easy Mandi customer app. A correct code/QR completes the delivery; COD is marked paid automatically.\n\n'
+            '7. Calling is disabled after delivery or cancellation. Pull down or use Refresh to update the jobs list.',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget statusPill(String status) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: stageColor(status).withValues(alpha: .12),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: stageColor(status).withValues(alpha: .35)),
+        ),
+        child: Text(
+          stageLabel(status),
+          style: TextStyle(
+            color: stageColor(status),
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      );
+
+  Widget legend() => Wrap(
+        spacing: 8,
+        runSpacing: 6,
+        children: [
+          for (final entry in statusLabels.entries)
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 10,
+                  height: 10,
+                  decoration: BoxDecoration(
+                    color: stageColor(entry.key),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 5),
+                Text(entry.value),
+              ],
+            ),
+        ],
+      );
+
+  Widget paymentPanel(Map<String, dynamic> order) {
+    final method = order['payment_method']?.toString();
+    final status = order['payment_status']?.toString() ?? 'pending';
+    final total = order['payment_total'];
+    if (method == null) {
+      return const Card(
+        color: Color(0xFFF3F4F6),
+        child: Padding(
+          padding: EdgeInsets.all(12),
+          child: Text(
+            'Manual delivery record · no payment amount is managed by the delivery platform.',
+          ),
+        ),
+      );
+    }
+    final upiBlocked = method == 'upi' && status != 'verified';
+    final paid = method == 'upi' ? status == 'verified' : status == 'paid';
+    final color = upiBlocked
+        ? const Color(0xFFEF6C00)
+        : paid
+            ? const Color(0xFF2E7D32)
+            : const Color(0xFF1565C0);
+    final amount = total == null ? '' : ' · ₹${NumberFormatHelper.two(total)}';
+    String note;
+    if (method == 'upi') {
+      note = status == 'verified'
+          ? 'UPI payment verified by admin. Handoff may proceed.'
+          : 'UPI is not verified. Do not hand over the order yet.';
+    } else {
+      note = status == 'paid'
+          ? 'Cash on Delivery has been marked paid.'
+          : 'Collect the COD amount at handoff. A correct customer code will mark it paid.';
+    }
+    return Card(
+      color: color.withValues(alpha: .08),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Payment: ${method.toUpperCase()} · ${status.replaceAll('_', ' ')}$amount',
+              style: TextStyle(fontWeight: FontWeight.w800, color: color),
+            ),
+            const SizedBox(height: 4),
+            Text(note),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget jobCard(Map<String, dynamic> order) {
+    final id = (order['id'] as num).toInt();
+    final status = '${order['status'] ?? ''}';
+    final finished = isFinished(status);
+    final next = const {
+      'assigned': 'picked_up',
+      'picked_up': 'out_for_delivery',
+    }[status];
+    final upiBlocked =
+        order['payment_method'] == 'upi' && order['payment_status'] != 'verified';
+    final items = itemsFor(order);
+    final canCall = !finished &&
+        RegExp(r'^[6-9][0-9]{9}$')
+            .hasMatch('${order['customer_mobile'] ?? ''}');
+    final hasLocation =
+        order['location_lat'] != null && order['location_lng'] != null;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 14),
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+        side: BorderSide(color: stageColor(status).withValues(alpha: .45)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            color: stageColor(status).withValues(alpha: .06),
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Order ${order['external_order_id']}',
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w900),
+                      ),
+                      Text(
+                        order['source_app'] == 'manual'
+                            ? 'Manual delivery'
+                            : 'Easy Mandi order',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
+                ),
+                statusPill(status),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${order['customer_name'] ?? 'Customer'}',
+                  style: const TextStyle(fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 4),
+                Text('${order['address_text'] ?? ''}'),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: canCall
+                          ? () => run(() => callCustomer(order))
+                          : null,
+                      icon: const Icon(Icons.call_outlined),
+                      label: const Text('Call customer'),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: !finished && hasLocation
+                          ? () => run(() => navigate(order))
+                          : null,
+                      icon: const Icon(Icons.navigation_outlined),
+                      label: const Text('Navigate'),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: finished
+                          ? null
+                          : () async {
+                              await Clipboard.setData(
+                                ClipboardData(
+                                  text:
+                                      '${order['customer_name']}\n${order['address_text']}\n+91 ${order['customer_mobile']}',
+                                ),
+                              );
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Customer address copied.'),
+                                  ),
+                                );
+                              }
+                            },
+                      icon: const Icon(Icons.copy_outlined),
+                      label: const Text('Copy address'),
+                    ),
+                  ],
+                ),
+                if (finished)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Text(
+                      status == 'delivered'
+                          ? 'Delivery completed. Customer calling and delivery actions are disabled.'
+                          : 'Delivery cancelled. Customer calling and delivery actions are disabled.',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ),
+                const SizedBox(height: 8),
+                paymentPanel(order),
+                ExpansionTile(
+                  tilePadding: EdgeInsets.zero,
+                  childrenPadding: const EdgeInsets.only(bottom: 10),
+                  title: Text(
+                    'Full order details · ${items.length} item${items.length == 1 ? '' : 's'}',
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  children: [
+                    if (items.isEmpty)
+                      const Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text('No basket items were stored.'),
+                      ),
+                    for (final item in items)
+                      ListTile(
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        leading: const Icon(Icons.shopping_basket_outlined),
+                        title: Text(
+                          '${item['name'] ?? item['product_name'] ?? 'Item'}',
+                        ),
+                        subtitle: Text('${item['unit'] ?? ''}'),
+                        trailing: Text('× ${item['quantity'] ?? ''}'),
+                      ),
+                    const Divider(),
+                    _detailLine('Customer mobile',
+                        '+91 ${order['customer_mobile'] ?? ''}'),
+                    _detailLine('Delivery ID', '$id'),
+                    _detailLine('Created', '${order['created_at'] ?? ''}'),
+                    if (order['updated_at'] != null)
+                      _detailLine('Last server update',
+                          '${order['updated_at']}'),
+                    if (order['source_status'] != null)
+                      _detailLine(
+                          'Easy Mandi order status', '${order['source_status']}'),
+                    if (order['payment_verified_at'] != null)
+                      _detailLine('Payment verified/paid',
+                          '${order['payment_verified_at']}'),
+                  ],
+                ),
+                if (next != null)
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: busy
+                          ? null
+                          : () => change(
+                                id,
+                                'status',
+                                status: next,
+                                success:
+                                    'Order ${order['external_order_id']} marked ${stageLabel(next)}.',
+                              ),
+                      icon: Icon(next == 'picked_up'
+                          ? Icons.inventory_2_outlined
+                          : Icons.local_shipping_outlined),
+                      label: Text('Mark ${stageLabel(next)}'),
+                    ),
+                  ),
+                if (status == 'out_for_delivery') ...[
+                  if (upiBlocked)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8),
+                      child: Text(
+                        'Handoff locked: wait for Easy Mandi admin to verify the UPI receipt.',
+                        style: TextStyle(
+                          color: Color(0xFFEF6C00),
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed:
+                          busy || upiBlocked ? null : () => confirmHandoff(order),
+                      icon: const Icon(Icons.password_outlined),
+                      label: Text(
+                        upiBlocked
+                            ? 'UPI verification required'
+                            : 'Enter customer code & complete delivery',
+                      ),
+                    ),
+                  ),
                 ],
-                decoration:
-                    const InputDecoration(labelText: 'Six-digit customer code'),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _detailLine(String label, String value) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 3),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              width: 150,
+              child: Text(
+                label,
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+            ),
+            Expanded(child: Text(value)),
+          ],
+        ),
+      );
+
+  Widget dashboard() {
+    final data = counts;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            _countChip('Active', 'active', data['active'] ?? 0),
+            _countChip('Assigned', 'assigned', data['assigned'] ?? 0),
+            _countChip('Picked up', 'picked_up', data['picked_up'] ?? 0),
+            _countChip('Out for delivery', 'out_for_delivery',
+                data['out_for_delivery'] ?? 0),
+            _countChip('Delivered', 'delivered', data['delivered'] ?? 0),
+          ],
+        ),
+        const SizedBox(height: 10),
+        legend(),
+        const SizedBox(height: 12),
+        TextField(
+          controller: search,
+          decoration: const InputDecoration(
+            prefixIcon: Icon(Icons.search),
+            labelText: 'Search order, customer, mobile or address',
+          ),
+        ),
+        const SizedBox(height: 10),
+        DropdownButtonFormField<String>(
+          key: ValueKey(filter),
+          initialValue: filter,
+          decoration: const InputDecoration(labelText: 'Filter deliveries'),
+          items: const [
+            DropdownMenuItem(value: 'active', child: Text('Active deliveries')),
+            DropdownMenuItem(value: 'all', child: Text('All deliveries')),
+            DropdownMenuItem(value: 'assigned', child: Text('Assigned')),
+            DropdownMenuItem(value: 'picked_up', child: Text('Picked up')),
+            DropdownMenuItem(
+                value: 'out_for_delivery', child: Text('Out for delivery')),
+            DropdownMenuItem(value: 'delivered', child: Text('Delivered')),
+            DropdownMenuItem(value: 'cancelled', child: Text('Cancelled')),
+          ],
+          onChanged: (value) => setState(() => filter = value ?? 'active'),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          '${visibleJobs.length} of ${jobs.length} jobs shown'
+          '${lastUpdated == null ? '' : ' · refreshed ${TimeOfDay.fromDateTime(lastUpdated!).format(context)}'}',
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+      ],
+    );
+  }
+
+  Widget _countChip(String label, String value, int count) => ActionChip(
+        avatar: CircleAvatar(
+          radius: 12,
+          child: Text('$count', style: const TextStyle(fontSize: 11)),
+        ),
+        label: Text(label),
+        onPressed: () => setState(() => filter = value),
+      );
+
+  Widget loginView() => ListView(
+        padding: const EdgeInsets.all(20),
+        children: [
+          const SizedBox(height: 28),
+          Icon(
+            Icons.local_shipping_outlined,
+            size: 72,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Delivery Partner',
+            textAlign: TextAlign.center,
+            style: Theme.of(context)
+                .textTheme
+                .headlineSmall
+                ?.copyWith(fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 24),
+          TextField(
+            controller: mobile,
+            keyboardType: TextInputType.phone,
+            inputFormatters: [
+              FilteringTextInputFormatter.digitsOnly,
+              LengthLimitingTextInputFormatter(10),
+            ],
+            decoration: const InputDecoration(
+              labelText: 'Mobile number',
+              prefixText: '+91 ',
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: password,
+            obscureText: true,
+            onSubmitted: (_) => login(),
+            decoration: const InputDecoration(labelText: 'Password'),
+          ),
+          const SizedBox(height: 16),
+          FilledButton.icon(
+            onPressed: busy ? null : login,
+            icon: const Icon(Icons.login),
+            label: const Text('Sign in'),
+          ),
+          if (error != null) ...[
+            const SizedBox(height: 12),
+            Text(
+              error!,
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+          ],
+          const SizedBox(height: 16),
+          TextButton.icon(
+            onPressed: showHelp,
+            icon: const Icon(Icons.help_outline),
+            label: const Text('How to use the delivery app'),
+          ),
+        ],
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    final shown = visibleJobs;
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          token == null ? 'Delivery Partner' : 'Delivery Partner · $unread unread',
+        ),
+        actions: [
+          IconButton(
+            tooltip: 'How to use',
+            onPressed: showHelp,
+            icon: const Icon(Icons.help_outline),
+          ),
+          if (token != null)
+            IconButton(
+              tooltip: 'Refresh jobs',
+              onPressed: busy ? null : refresh,
+              icon: const Icon(Icons.refresh),
+            ),
+          if (token != null)
+            IconButton(
+              tooltip: 'Sign out',
+              onPressed: busy ? null : logout,
+              icon: const Icon(Icons.logout),
+            ),
+        ],
+      ),
+      body: token == null
+          ? loginView()
+          : Column(
+              children: [
+                if (busy) const LinearProgressIndicator(minHeight: 2),
+                Expanded(
+                  child: RefreshIndicator(
+                    onRefresh: refresh,
+                    child: ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.fromLTRB(16, 14, 16, 130),
+                      children: [
+                        dashboard(),
+                        if (error != null) ...[
+                          const SizedBox(height: 10),
+                          Text(
+                            error!,
+                            style: TextStyle(
+                                color: Theme.of(context).colorScheme.error),
+                          ),
+                        ],
+                        const SizedBox(height: 14),
+                        if (shown.isEmpty)
+                          const Card(
+                            child: Padding(
+                              padding: EdgeInsets.all(24),
+                              child: Text(
+                                'No deliveries match this filter. Pull down or choose Refresh to check for new assignments.',
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ),
+                        for (final order in shown) jobCard(order),
+                        if (notifications.isNotEmpty) ...[
+                          const Divider(),
+                          Text(
+                            'Recent notifications',
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleMedium
+                                ?.copyWith(fontWeight: FontWeight.w800),
+                          ),
+                          TextButton.icon(
+                            onPressed: busy ? null : () => markNotifications(),
+                            icon: const Icon(Icons.done_all),
+                            label: const Text('Mark all as read'),
+                          ),
+                          for (final raw in notifications.take(10))
+                            ListTile(
+                              contentPadding: EdgeInsets.zero,
+                              leading: Icon(
+                                raw['read_at'] == null
+                                    ? Icons.notifications_active
+                                    : Icons.notifications_none,
+                              ),
+                              onTap: raw['read_at'] == null
+                                  ? () => markNotifications(
+                                      (raw['id'] as num).toInt())
+                                  : null,
+                              title:
+                                  Text(raw['message'] as String? ?? 'Update'),
+                              subtitle:
+                                  Text(raw['created_at'] as String? ?? ''),
+                            ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+    );
+  }
+}
+
+class HandoffScannerPage extends StatefulWidget {
+  const HandoffScannerPage({super.key, required this.expectedDeliveryId});
+
+  final int expectedDeliveryId;
+
+  @override
+  State<HandoffScannerPage> createState() => _HandoffScannerPageState();
+}
+
+class _HandoffScannerPageState extends State<HandoffScannerPage> {
+  final MobileScannerController scanner = MobileScannerController(
+    detectionSpeed: DetectionSpeed.noDuplicates,
+    formats: const [BarcodeFormat.qrCode],
+  );
+  bool handling = false;
+  String message = 'Point the camera at the QR shown in the customer app.';
+
+  String? parseCode(String raw) {
+    final trimmed = raw.trim();
+    if (RegExp(r'^[0-9]{6}
+  static String two(Object? value) {
+    if (value is num) return value.toStringAsFixed(2);
+    return (num.tryParse('${value ?? ''}') ?? 0).toStringAsFixed(2);
+  }
+}
+).hasMatch(value)) {
+                    Navigator.pop(dialogContext, value);
+                  }
+                },
+                child: const Text('Confirm delivery'),
               ),
             ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () {
-                final value = controller.text.trim();
-                if (RegExp(r'^[0-9]{6}$').hasMatch(value)) {
-                  Navigator.pop(dialogContext, value);
-                }
-              },
-              child: const Text('Confirm delivery'),
-            ),
-          ],
         ),
       );
       if (code == null) return;
       await change(
-        (order['id'] as num).toInt(),
+        deliveryId,
+        'confirm',
+        code: code,
+        success: order['payment_method'] == 'cod'
+            ? 'Delivery confirmed. COD marked paid and notifications sent.'
+            : 'Delivery confirmed. Notifications sent.',
+      );
+    } finally {
+      controller.dispose();
+    }
+  }
+
+  void showHelp() {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('How to use Delivery Partner'),
+        content: const SingleChildScrollView(
+          child: Text(
+            '1. Open an Assigned job and review customer, address, basket and payment status.\n\n'
+            '2. Use Call customer or Navigate while the delivery is still active.\n\n'
+            '3. Mark Picked up after collecting the parcel.\n\n'
+            '4. Mark Out for delivery when leaving for the customer.\n\n'
+            '5. For UPI orders, handoff is blocked until admin verifies payment. For COD, collect the displayed amount at handoff.\n\n'
+            '6. After physically handing over the order, enter the customer\'s six-digit code. A correct code completes the delivery; COD is marked paid automatically.\n\n'
+            '7. Calling is disabled after delivery or cancellation. Pull down or use Refresh to update the jobs list.',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget statusPill(String status) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: stageColor(status).withValues(alpha: .12),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: stageColor(status).withValues(alpha: .35)),
+        ),
+        child: Text(
+          stageLabel(status),
+          style: TextStyle(
+            color: stageColor(status),
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      );
+
+  Widget legend() => Wrap(
+        spacing: 8,
+        runSpacing: 6,
+        children: [
+          for (final entry in statusLabels.entries)
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 10,
+                  height: 10,
+                  decoration: BoxDecoration(
+                    color: stageColor(entry.key),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 5),
+                Text(entry.value),
+              ],
+            ),
+        ],
+      );
+
+  Widget paymentPanel(Map<String, dynamic> order) {
+    final method = order['payment_method']?.toString();
+    final status = order['payment_status']?.toString() ?? 'pending';
+    final total = order['payment_total'];
+    if (method == null) {
+      return const Card(
+        color: Color(0xFFF3F4F6),
+        child: Padding(
+          padding: EdgeInsets.all(12),
+          child: Text(
+            'Manual delivery record · no payment amount is managed by the delivery platform.',
+          ),
+        ),
+      );
+    }
+    final upiBlocked = method == 'upi' && status != 'verified';
+    final paid = method == 'upi' ? status == 'verified' : status == 'paid';
+    final color = upiBlocked
+        ? const Color(0xFFEF6C00)
+        : paid
+            ? const Color(0xFF2E7D32)
+            : const Color(0xFF1565C0);
+    final amount = total == null ? '' : ' · ₹${NumberFormatHelper.two(total)}';
+    String note;
+    if (method == 'upi') {
+      note = status == 'verified'
+          ? 'UPI payment verified by admin. Handoff may proceed.'
+          : 'UPI is not verified. Do not hand over the order yet.';
+    } else {
+      note = status == 'paid'
+          ? 'Cash on Delivery has been marked paid.'
+          : 'Collect the COD amount at handoff. A correct customer code will mark it paid.';
+    }
+    return Card(
+      color: color.withValues(alpha: .08),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Payment: ${method.toUpperCase()} · ${status.replaceAll('_', ' ')}$amount',
+              style: TextStyle(fontWeight: FontWeight.w800, color: color),
+            ),
+            const SizedBox(height: 4),
+            Text(note),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget jobCard(Map<String, dynamic> order) {
+    final id = (order['id'] as num).toInt();
+    final status = '${order['status'] ?? ''}';
+    final finished = isFinished(status);
+    final next = const {
+      'assigned': 'picked_up',
+      'picked_up': 'out_for_delivery',
+    }[status];
+    final upiBlocked =
+        order['payment_method'] == 'upi' && order['payment_status'] != 'verified';
+    final items = itemsFor(order);
+    final canCall = !finished &&
+        RegExp(r'^[6-9][0-9]{9}$')
+            .hasMatch('${order['customer_mobile'] ?? ''}');
+    final hasLocation =
+        order['location_lat'] != null && order['location_lng'] != null;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 14),
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+        side: BorderSide(color: stageColor(status).withValues(alpha: .45)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            color: stageColor(status).withValues(alpha: .06),
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Order ${order['external_order_id']}',
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w900),
+                      ),
+                      Text(
+                        order['source_app'] == 'manual'
+                            ? 'Manual delivery'
+                            : 'Easy Mandi order',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
+                ),
+                statusPill(status),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${order['customer_name'] ?? 'Customer'}',
+                  style: const TextStyle(fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 4),
+                Text('${order['address_text'] ?? ''}'),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: canCall
+                          ? () => run(() => callCustomer(order))
+                          : null,
+                      icon: const Icon(Icons.call_outlined),
+                      label: const Text('Call customer'),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: !finished && hasLocation
+                          ? () => run(() => navigate(order))
+                          : null,
+                      icon: const Icon(Icons.navigation_outlined),
+                      label: const Text('Navigate'),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: finished
+                          ? null
+                          : () async {
+                              await Clipboard.setData(
+                                ClipboardData(
+                                  text:
+                                      '${order['customer_name']}\n${order['address_text']}\n+91 ${order['customer_mobile']}',
+                                ),
+                              );
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Customer address copied.'),
+                                  ),
+                                );
+                              }
+                            },
+                      icon: const Icon(Icons.copy_outlined),
+                      label: const Text('Copy address'),
+                    ),
+                  ],
+                ),
+                if (finished)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Text(
+                      status == 'delivered'
+                          ? 'Delivery completed. Customer calling and delivery actions are disabled.'
+                          : 'Delivery cancelled. Customer calling and delivery actions are disabled.',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ),
+                const SizedBox(height: 8),
+                paymentPanel(order),
+                ExpansionTile(
+                  tilePadding: EdgeInsets.zero,
+                  childrenPadding: const EdgeInsets.only(bottom: 10),
+                  title: Text(
+                    'Full order details · ${items.length} item${items.length == 1 ? '' : 's'}',
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  children: [
+                    if (items.isEmpty)
+                      const Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text('No basket items were stored.'),
+                      ),
+                    for (final item in items)
+                      ListTile(
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        leading: const Icon(Icons.shopping_basket_outlined),
+                        title: Text(
+                          '${item['name'] ?? item['product_name'] ?? 'Item'}',
+                        ),
+                        subtitle: Text('${item['unit'] ?? ''}'),
+                        trailing: Text('× ${item['quantity'] ?? ''}'),
+                      ),
+                    const Divider(),
+                    _detailLine('Customer mobile',
+                        '+91 ${order['customer_mobile'] ?? ''}'),
+                    _detailLine('Delivery ID', '$id'),
+                    _detailLine('Created', '${order['created_at'] ?? ''}'),
+                    if (order['updated_at'] != null)
+                      _detailLine('Last server update',
+                          '${order['updated_at']}'),
+                    if (order['source_status'] != null)
+                      _detailLine(
+                          'Easy Mandi order status', '${order['source_status']}'),
+                    if (order['payment_verified_at'] != null)
+                      _detailLine('Payment verified/paid',
+                          '${order['payment_verified_at']}'),
+                  ],
+                ),
+                if (next != null)
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: busy
+                          ? null
+                          : () => change(
+                                id,
+                                'status',
+                                status: next,
+                                success:
+                                    'Order ${order['external_order_id']} marked ${stageLabel(next)}.',
+                              ),
+                      icon: Icon(next == 'picked_up'
+                          ? Icons.inventory_2_outlined
+                          : Icons.local_shipping_outlined),
+                      label: Text('Mark ${stageLabel(next)}'),
+                    ),
+                  ),
+                if (status == 'out_for_delivery') ...[
+                  if (upiBlocked)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8),
+                      child: Text(
+                        'Handoff locked: wait for Easy Mandi admin to verify the UPI receipt.',
+                        style: TextStyle(
+                          color: Color(0xFFEF6C00),
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed:
+                          busy || upiBlocked ? null : () => confirmHandoff(order),
+                      icon: const Icon(Icons.password_outlined),
+                      label: Text(
+                        upiBlocked
+                            ? 'UPI verification required'
+                            : 'Enter customer code & complete delivery',
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _detailLine(String label, String value) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 3),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              width: 150,
+              child: Text(
+                label,
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+            ),
+            Expanded(child: Text(value)),
+          ],
+        ),
+      );
+
+  Widget dashboard() {
+    final data = counts;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            _countChip('Active', 'active', data['active'] ?? 0),
+            _countChip('Assigned', 'assigned', data['assigned'] ?? 0),
+            _countChip('Picked up', 'picked_up', data['picked_up'] ?? 0),
+            _countChip('Out for delivery', 'out_for_delivery',
+                data['out_for_delivery'] ?? 0),
+            _countChip('Delivered', 'delivered', data['delivered'] ?? 0),
+          ],
+        ),
+        const SizedBox(height: 10),
+        legend(),
+        const SizedBox(height: 12),
+        TextField(
+          controller: search,
+          decoration: const InputDecoration(
+            prefixIcon: Icon(Icons.search),
+            labelText: 'Search order, customer, mobile or address',
+          ),
+        ),
+        const SizedBox(height: 10),
+        DropdownButtonFormField<String>(
+          key: ValueKey(filter),
+          initialValue: filter,
+          decoration: const InputDecoration(labelText: 'Filter deliveries'),
+          items: const [
+            DropdownMenuItem(value: 'active', child: Text('Active deliveries')),
+            DropdownMenuItem(value: 'all', child: Text('All deliveries')),
+            DropdownMenuItem(value: 'assigned', child: Text('Assigned')),
+            DropdownMenuItem(value: 'picked_up', child: Text('Picked up')),
+            DropdownMenuItem(
+                value: 'out_for_delivery', child: Text('Out for delivery')),
+            DropdownMenuItem(value: 'delivered', child: Text('Delivered')),
+            DropdownMenuItem(value: 'cancelled', child: Text('Cancelled')),
+          ],
+          onChanged: (value) => setState(() => filter = value ?? 'active'),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          '${visibleJobs.length} of ${jobs.length} jobs shown'
+          '${lastUpdated == null ? '' : ' · refreshed ${TimeOfDay.fromDateTime(lastUpdated!).format(context)}'}',
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+      ],
+    );
+  }
+
+  Widget _countChip(String label, String value, int count) => ActionChip(
+        avatar: CircleAvatar(
+          radius: 12,
+          child: Text('$count', style: const TextStyle(fontSize: 11)),
+        ),
+        label: Text(label),
+        onPressed: () => setState(() => filter = value),
+      );
+
+  Widget loginView() => ListView(
+        padding: const EdgeInsets.all(20),
+        children: [
+          const SizedBox(height: 28),
+          Icon(
+            Icons.local_shipping_outlined,
+            size: 72,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Delivery Partner',
+            textAlign: TextAlign.center,
+            style: Theme.of(context)
+                .textTheme
+                .headlineSmall
+                ?.copyWith(fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 24),
+          TextField(
+            controller: mobile,
+            keyboardType: TextInputType.phone,
+            inputFormatters: [
+              FilteringTextInputFormatter.digitsOnly,
+              LengthLimitingTextInputFormatter(10),
+            ],
+            decoration: const InputDecoration(
+              labelText: 'Mobile number',
+              prefixText: '+91 ',
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: password,
+            obscureText: true,
+            onSubmitted: (_) => login(),
+            decoration: const InputDecoration(labelText: 'Password'),
+          ),
+          const SizedBox(height: 16),
+          FilledButton.icon(
+            onPressed: busy ? null : login,
+            icon: const Icon(Icons.login),
+            label: const Text('Sign in'),
+          ),
+          if (error != null) ...[
+            const SizedBox(height: 12),
+            Text(
+              error!,
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+          ],
+          const SizedBox(height: 16),
+          TextButton.icon(
+            onPressed: showHelp,
+            icon: const Icon(Icons.help_outline),
+            label: const Text('How to use the delivery app'),
+          ),
+        ],
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    final shown = visibleJobs;
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          token == null ? 'Delivery Partner' : 'Delivery Partner · $unread unread',
+        ),
+        actions: [
+          IconButton(
+            tooltip: 'How to use',
+            onPressed: showHelp,
+            icon: const Icon(Icons.help_outline),
+          ),
+          if (token != null)
+            IconButton(
+              tooltip: 'Refresh jobs',
+              onPressed: busy ? null : refresh,
+              icon: const Icon(Icons.refresh),
+            ),
+          if (token != null)
+            IconButton(
+              tooltip: 'Sign out',
+              onPressed: busy ? null : logout,
+              icon: const Icon(Icons.logout),
+            ),
+        ],
+      ),
+      body: token == null
+          ? loginView()
+          : Column(
+              children: [
+                if (busy) const LinearProgressIndicator(minHeight: 2),
+                Expanded(
+                  child: RefreshIndicator(
+                    onRefresh: refresh,
+                    child: ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.fromLTRB(16, 14, 16, 130),
+                      children: [
+                        dashboard(),
+                        if (error != null) ...[
+                          const SizedBox(height: 10),
+                          Text(
+                            error!,
+                            style: TextStyle(
+                                color: Theme.of(context).colorScheme.error),
+                          ),
+                        ],
+                        const SizedBox(height: 14),
+                        if (shown.isEmpty)
+                          const Card(
+                            child: Padding(
+                              padding: EdgeInsets.all(24),
+                              child: Text(
+                                'No deliveries match this filter. Pull down or choose Refresh to check for new assignments.',
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ),
+                        for (final order in shown) jobCard(order),
+                        if (notifications.isNotEmpty) ...[
+                          const Divider(),
+                          Text(
+                            'Recent notifications',
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleMedium
+                                ?.copyWith(fontWeight: FontWeight.w800),
+                          ),
+                          TextButton.icon(
+                            onPressed: busy ? null : () => markNotifications(),
+                            icon: const Icon(Icons.done_all),
+                            label: const Text('Mark all as read'),
+                          ),
+                          for (final raw in notifications.take(10))
+                            ListTile(
+                              contentPadding: EdgeInsets.zero,
+                              leading: Icon(
+                                raw['read_at'] == null
+                                    ? Icons.notifications_active
+                                    : Icons.notifications_none,
+                              ),
+                              onTap: raw['read_at'] == null
+                                  ? () => markNotifications(
+                                      (raw['id'] as num).toInt())
+                                  : null,
+                              title:
+                                  Text(raw['message'] as String? ?? 'Update'),
+                              subtitle:
+                                  Text(raw['created_at'] as String? ?? ''),
+                            ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+    );
+  }
+}
+
+class NumberFormatHelper {
+  static String two(Object? value) {
+    if (value is num) return value.toStringAsFixed(2);
+    return (num.tryParse('${value ?? ''}') ?? 0).toStringAsFixed(2);
+  }
+}
+).hasMatch(trimmed)) return trimmed;
+    final uri = Uri.tryParse(trimmed);
+    if (uri == null ||
+        uri.scheme != 'easymandi' ||
+        uri.host != 'handoff') {
+      return null;
+    }
+    final delivery =
+        int.tryParse(uri.queryParameters['delivery'] ?? '');
+    final code = uri.queryParameters['code'] ?? '';
+    if (delivery != widget.expectedDeliveryId) {
+      setState(() => message =
+          'This QR belongs to delivery ${delivery ?? 'unknown'}, not delivery ${widget.expectedDeliveryId}.');
+      return null;
+    }
+    if (!RegExp(r'^[0-9]{6}
+  static String two(Object? value) {
+    if (value is num) return value.toStringAsFixed(2);
+    return (num.tryParse('${value ?? ''}') ?? 0).toStringAsFixed(2);
+  }
+}
+).hasMatch(value)) {
+                    Navigator.pop(dialogContext, value);
+                  }
+                },
+                child: const Text('Confirm delivery'),
+              ),
+            ],
+          ),
+        ),
+      );
+      if (code == null) return;
+      await change(
+        deliveryId,
+        'confirm',
+        code: code,
+        success: order['payment_method'] == 'cod'
+            ? 'Delivery confirmed. COD marked paid and notifications sent.'
+            : 'Delivery confirmed. Notifications sent.',
+      );
+    } finally {
+      controller.dispose();
+    }
+  }
+
+  void showHelp() {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('How to use Delivery Partner'),
+        content: const SingleChildScrollView(
+          child: Text(
+            '1. Open an Assigned job and review customer, address, basket and payment status.\n\n'
+            '2. Use Call customer or Navigate while the delivery is still active.\n\n'
+            '3. Mark Picked up after collecting the parcel.\n\n'
+            '4. Mark Out for delivery when leaving for the customer.\n\n'
+            '5. For UPI orders, handoff is blocked until admin verifies payment. For COD, collect the displayed amount at handoff.\n\n'
+            '6. After physically handing over the order, enter the customer\'s six-digit code. A correct code completes the delivery; COD is marked paid automatically.\n\n'
+            '7. Calling is disabled after delivery or cancellation. Pull down or use Refresh to update the jobs list.',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget statusPill(String status) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: stageColor(status).withValues(alpha: .12),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: stageColor(status).withValues(alpha: .35)),
+        ),
+        child: Text(
+          stageLabel(status),
+          style: TextStyle(
+            color: stageColor(status),
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      );
+
+  Widget legend() => Wrap(
+        spacing: 8,
+        runSpacing: 6,
+        children: [
+          for (final entry in statusLabels.entries)
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 10,
+                  height: 10,
+                  decoration: BoxDecoration(
+                    color: stageColor(entry.key),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 5),
+                Text(entry.value),
+              ],
+            ),
+        ],
+      );
+
+  Widget paymentPanel(Map<String, dynamic> order) {
+    final method = order['payment_method']?.toString();
+    final status = order['payment_status']?.toString() ?? 'pending';
+    final total = order['payment_total'];
+    if (method == null) {
+      return const Card(
+        color: Color(0xFFF3F4F6),
+        child: Padding(
+          padding: EdgeInsets.all(12),
+          child: Text(
+            'Manual delivery record · no payment amount is managed by the delivery platform.',
+          ),
+        ),
+      );
+    }
+    final upiBlocked = method == 'upi' && status != 'verified';
+    final paid = method == 'upi' ? status == 'verified' : status == 'paid';
+    final color = upiBlocked
+        ? const Color(0xFFEF6C00)
+        : paid
+            ? const Color(0xFF2E7D32)
+            : const Color(0xFF1565C0);
+    final amount = total == null ? '' : ' · ₹${NumberFormatHelper.two(total)}';
+    String note;
+    if (method == 'upi') {
+      note = status == 'verified'
+          ? 'UPI payment verified by admin. Handoff may proceed.'
+          : 'UPI is not verified. Do not hand over the order yet.';
+    } else {
+      note = status == 'paid'
+          ? 'Cash on Delivery has been marked paid.'
+          : 'Collect the COD amount at handoff. A correct customer code will mark it paid.';
+    }
+    return Card(
+      color: color.withValues(alpha: .08),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Payment: ${method.toUpperCase()} · ${status.replaceAll('_', ' ')}$amount',
+              style: TextStyle(fontWeight: FontWeight.w800, color: color),
+            ),
+            const SizedBox(height: 4),
+            Text(note),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget jobCard(Map<String, dynamic> order) {
+    final id = (order['id'] as num).toInt();
+    final status = '${order['status'] ?? ''}';
+    final finished = isFinished(status);
+    final next = const {
+      'assigned': 'picked_up',
+      'picked_up': 'out_for_delivery',
+    }[status];
+    final upiBlocked =
+        order['payment_method'] == 'upi' && order['payment_status'] != 'verified';
+    final items = itemsFor(order);
+    final canCall = !finished &&
+        RegExp(r'^[6-9][0-9]{9}$')
+            .hasMatch('${order['customer_mobile'] ?? ''}');
+    final hasLocation =
+        order['location_lat'] != null && order['location_lng'] != null;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 14),
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+        side: BorderSide(color: stageColor(status).withValues(alpha: .45)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            color: stageColor(status).withValues(alpha: .06),
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Order ${order['external_order_id']}',
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w900),
+                      ),
+                      Text(
+                        order['source_app'] == 'manual'
+                            ? 'Manual delivery'
+                            : 'Easy Mandi order',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
+                ),
+                statusPill(status),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${order['customer_name'] ?? 'Customer'}',
+                  style: const TextStyle(fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 4),
+                Text('${order['address_text'] ?? ''}'),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: canCall
+                          ? () => run(() => callCustomer(order))
+                          : null,
+                      icon: const Icon(Icons.call_outlined),
+                      label: const Text('Call customer'),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: !finished && hasLocation
+                          ? () => run(() => navigate(order))
+                          : null,
+                      icon: const Icon(Icons.navigation_outlined),
+                      label: const Text('Navigate'),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: finished
+                          ? null
+                          : () async {
+                              await Clipboard.setData(
+                                ClipboardData(
+                                  text:
+                                      '${order['customer_name']}\n${order['address_text']}\n+91 ${order['customer_mobile']}',
+                                ),
+                              );
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Customer address copied.'),
+                                  ),
+                                );
+                              }
+                            },
+                      icon: const Icon(Icons.copy_outlined),
+                      label: const Text('Copy address'),
+                    ),
+                  ],
+                ),
+                if (finished)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Text(
+                      status == 'delivered'
+                          ? 'Delivery completed. Customer calling and delivery actions are disabled.'
+                          : 'Delivery cancelled. Customer calling and delivery actions are disabled.',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ),
+                const SizedBox(height: 8),
+                paymentPanel(order),
+                ExpansionTile(
+                  tilePadding: EdgeInsets.zero,
+                  childrenPadding: const EdgeInsets.only(bottom: 10),
+                  title: Text(
+                    'Full order details · ${items.length} item${items.length == 1 ? '' : 's'}',
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  children: [
+                    if (items.isEmpty)
+                      const Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text('No basket items were stored.'),
+                      ),
+                    for (final item in items)
+                      ListTile(
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        leading: const Icon(Icons.shopping_basket_outlined),
+                        title: Text(
+                          '${item['name'] ?? item['product_name'] ?? 'Item'}',
+                        ),
+                        subtitle: Text('${item['unit'] ?? ''}'),
+                        trailing: Text('× ${item['quantity'] ?? ''}'),
+                      ),
+                    const Divider(),
+                    _detailLine('Customer mobile',
+                        '+91 ${order['customer_mobile'] ?? ''}'),
+                    _detailLine('Delivery ID', '$id'),
+                    _detailLine('Created', '${order['created_at'] ?? ''}'),
+                    if (order['updated_at'] != null)
+                      _detailLine('Last server update',
+                          '${order['updated_at']}'),
+                    if (order['source_status'] != null)
+                      _detailLine(
+                          'Easy Mandi order status', '${order['source_status']}'),
+                    if (order['payment_verified_at'] != null)
+                      _detailLine('Payment verified/paid',
+                          '${order['payment_verified_at']}'),
+                  ],
+                ),
+                if (next != null)
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: busy
+                          ? null
+                          : () => change(
+                                id,
+                                'status',
+                                status: next,
+                                success:
+                                    'Order ${order['external_order_id']} marked ${stageLabel(next)}.',
+                              ),
+                      icon: Icon(next == 'picked_up'
+                          ? Icons.inventory_2_outlined
+                          : Icons.local_shipping_outlined),
+                      label: Text('Mark ${stageLabel(next)}'),
+                    ),
+                  ),
+                if (status == 'out_for_delivery') ...[
+                  if (upiBlocked)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8),
+                      child: Text(
+                        'Handoff locked: wait for Easy Mandi admin to verify the UPI receipt.',
+                        style: TextStyle(
+                          color: Color(0xFFEF6C00),
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed:
+                          busy || upiBlocked ? null : () => confirmHandoff(order),
+                      icon: const Icon(Icons.password_outlined),
+                      label: Text(
+                        upiBlocked
+                            ? 'UPI verification required'
+                            : 'Enter customer code & complete delivery',
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _detailLine(String label, String value) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 3),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              width: 150,
+              child: Text(
+                label,
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+            ),
+            Expanded(child: Text(value)),
+          ],
+        ),
+      );
+
+  Widget dashboard() {
+    final data = counts;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            _countChip('Active', 'active', data['active'] ?? 0),
+            _countChip('Assigned', 'assigned', data['assigned'] ?? 0),
+            _countChip('Picked up', 'picked_up', data['picked_up'] ?? 0),
+            _countChip('Out for delivery', 'out_for_delivery',
+                data['out_for_delivery'] ?? 0),
+            _countChip('Delivered', 'delivered', data['delivered'] ?? 0),
+          ],
+        ),
+        const SizedBox(height: 10),
+        legend(),
+        const SizedBox(height: 12),
+        TextField(
+          controller: search,
+          decoration: const InputDecoration(
+            prefixIcon: Icon(Icons.search),
+            labelText: 'Search order, customer, mobile or address',
+          ),
+        ),
+        const SizedBox(height: 10),
+        DropdownButtonFormField<String>(
+          key: ValueKey(filter),
+          initialValue: filter,
+          decoration: const InputDecoration(labelText: 'Filter deliveries'),
+          items: const [
+            DropdownMenuItem(value: 'active', child: Text('Active deliveries')),
+            DropdownMenuItem(value: 'all', child: Text('All deliveries')),
+            DropdownMenuItem(value: 'assigned', child: Text('Assigned')),
+            DropdownMenuItem(value: 'picked_up', child: Text('Picked up')),
+            DropdownMenuItem(
+                value: 'out_for_delivery', child: Text('Out for delivery')),
+            DropdownMenuItem(value: 'delivered', child: Text('Delivered')),
+            DropdownMenuItem(value: 'cancelled', child: Text('Cancelled')),
+          ],
+          onChanged: (value) => setState(() => filter = value ?? 'active'),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          '${visibleJobs.length} of ${jobs.length} jobs shown'
+          '${lastUpdated == null ? '' : ' · refreshed ${TimeOfDay.fromDateTime(lastUpdated!).format(context)}'}',
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+      ],
+    );
+  }
+
+  Widget _countChip(String label, String value, int count) => ActionChip(
+        avatar: CircleAvatar(
+          radius: 12,
+          child: Text('$count', style: const TextStyle(fontSize: 11)),
+        ),
+        label: Text(label),
+        onPressed: () => setState(() => filter = value),
+      );
+
+  Widget loginView() => ListView(
+        padding: const EdgeInsets.all(20),
+        children: [
+          const SizedBox(height: 28),
+          Icon(
+            Icons.local_shipping_outlined,
+            size: 72,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Delivery Partner',
+            textAlign: TextAlign.center,
+            style: Theme.of(context)
+                .textTheme
+                .headlineSmall
+                ?.copyWith(fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 24),
+          TextField(
+            controller: mobile,
+            keyboardType: TextInputType.phone,
+            inputFormatters: [
+              FilteringTextInputFormatter.digitsOnly,
+              LengthLimitingTextInputFormatter(10),
+            ],
+            decoration: const InputDecoration(
+              labelText: 'Mobile number',
+              prefixText: '+91 ',
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: password,
+            obscureText: true,
+            onSubmitted: (_) => login(),
+            decoration: const InputDecoration(labelText: 'Password'),
+          ),
+          const SizedBox(height: 16),
+          FilledButton.icon(
+            onPressed: busy ? null : login,
+            icon: const Icon(Icons.login),
+            label: const Text('Sign in'),
+          ),
+          if (error != null) ...[
+            const SizedBox(height: 12),
+            Text(
+              error!,
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+          ],
+          const SizedBox(height: 16),
+          TextButton.icon(
+            onPressed: showHelp,
+            icon: const Icon(Icons.help_outline),
+            label: const Text('How to use the delivery app'),
+          ),
+        ],
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    final shown = visibleJobs;
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          token == null ? 'Delivery Partner' : 'Delivery Partner · $unread unread',
+        ),
+        actions: [
+          IconButton(
+            tooltip: 'How to use',
+            onPressed: showHelp,
+            icon: const Icon(Icons.help_outline),
+          ),
+          if (token != null)
+            IconButton(
+              tooltip: 'Refresh jobs',
+              onPressed: busy ? null : refresh,
+              icon: const Icon(Icons.refresh),
+            ),
+          if (token != null)
+            IconButton(
+              tooltip: 'Sign out',
+              onPressed: busy ? null : logout,
+              icon: const Icon(Icons.logout),
+            ),
+        ],
+      ),
+      body: token == null
+          ? loginView()
+          : Column(
+              children: [
+                if (busy) const LinearProgressIndicator(minHeight: 2),
+                Expanded(
+                  child: RefreshIndicator(
+                    onRefresh: refresh,
+                    child: ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.fromLTRB(16, 14, 16, 130),
+                      children: [
+                        dashboard(),
+                        if (error != null) ...[
+                          const SizedBox(height: 10),
+                          Text(
+                            error!,
+                            style: TextStyle(
+                                color: Theme.of(context).colorScheme.error),
+                          ),
+                        ],
+                        const SizedBox(height: 14),
+                        if (shown.isEmpty)
+                          const Card(
+                            child: Padding(
+                              padding: EdgeInsets.all(24),
+                              child: Text(
+                                'No deliveries match this filter. Pull down or choose Refresh to check for new assignments.',
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ),
+                        for (final order in shown) jobCard(order),
+                        if (notifications.isNotEmpty) ...[
+                          const Divider(),
+                          Text(
+                            'Recent notifications',
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleMedium
+                                ?.copyWith(fontWeight: FontWeight.w800),
+                          ),
+                          TextButton.icon(
+                            onPressed: busy ? null : () => markNotifications(),
+                            icon: const Icon(Icons.done_all),
+                            label: const Text('Mark all as read'),
+                          ),
+                          for (final raw in notifications.take(10))
+                            ListTile(
+                              contentPadding: EdgeInsets.zero,
+                              leading: Icon(
+                                raw['read_at'] == null
+                                    ? Icons.notifications_active
+                                    : Icons.notifications_none,
+                              ),
+                              onTap: raw['read_at'] == null
+                                  ? () => markNotifications(
+                                      (raw['id'] as num).toInt())
+                                  : null,
+                              title:
+                                  Text(raw['message'] as String? ?? 'Update'),
+                              subtitle:
+                                  Text(raw['created_at'] as String? ?? ''),
+                            ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+    );
+  }
+}
+
+class NumberFormatHelper {
+  static String two(Object? value) {
+    if (value is num) return value.toStringAsFixed(2);
+    return (num.tryParse('${value ?? ''}') ?? 0).toStringAsFixed(2);
+  }
+}
+).hasMatch(code)) return null;
+    return code;
+  }
+
+  Future<void> detected(BarcodeCapture capture) async {
+    if (handling) return;
+    String? raw;
+    for (final barcode in capture.barcodes) {
+      final value = barcode.rawValue;
+      if (value != null && value.trim().isNotEmpty) {
+        raw = value;
+        break;
+      }
+    }
+    if (raw == null) return;
+    handling = true;
+    final code = parseCode(raw);
+    if (code == null) {
+      if (mounted && !message.startsWith('This QR belongs')) {
+        setState(() => message =
+            'This is not a valid Easy Mandi handoff QR. Try again.');
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 900));
+      handling = false;
+      return;
+    }
+    await scanner.stop();
+    if (mounted) Navigator.pop(context, code);
+  }
+
+  @override
+  void dispose() {
+    scanner.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        appBar: AppBar(
+          title: Text('Scan delivery ${widget.expectedDeliveryId} QR'),
+          actions: [
+            IconButton(
+              tooltip: 'Torch',
+              onPressed: scanner.toggleTorch,
+              icon: const Icon(Icons.flashlight_on_outlined),
+            ),
+            IconButton(
+              tooltip: 'Switch camera',
+              onPressed: scanner.switchCamera,
+              icon: const Icon(Icons.cameraswitch_outlined),
+            ),
+          ],
+        ),
+        body: Column(
+          children: [
+            Expanded(
+              child: MobileScanner(
+                controller: scanner,
+                onDetect: detected,
+              ),
+            ),
+            SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text(
+                  message,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+}
+
+class NumberFormatHelper {
+  static String two(Object? value) {
+    if (value is num) return value.toStringAsFixed(2);
+    return (num.tryParse('${value ?? ''}') ?? 0).toStringAsFixed(2);
+  }
+}
+).hasMatch(value)) {
+                    Navigator.pop(dialogContext, value);
+                  }
+                },
+                child: const Text('Confirm delivery'),
+              ),
+            ],
+          ),
+        ),
+      );
+      if (code == null) return;
+      await change(
+        deliveryId,
         'confirm',
         code: code,
         success: order['payment_method'] == 'cod'
