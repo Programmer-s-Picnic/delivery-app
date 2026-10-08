@@ -13,7 +13,15 @@ import 'notification_overlay.dart';
 const endpoint = 'https://cserver.learnwithchampak.live/delivery/api/';
 const storage = FlutterSecureStorage();
 
-void main() => runApp(const PartnerApp());
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  const key='delivery_partner_clean_start_20261008';
+  if (await storage.read(key:key) != 'done') {
+    await storage.delete(key:'partner_token');
+    await storage.write(key:key,value:'done');
+  }
+  runApp(const PartnerApp());
+}
 
 class PartnerApp extends StatelessWidget {
   const PartnerApp({super.key});
