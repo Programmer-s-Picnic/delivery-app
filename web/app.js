@@ -192,6 +192,9 @@ async function showOrderDetail(article,id){
   detailText(grid,'Customer',o.customer_name);
   detailText(grid,'Mobile',o.customer_mobile);
   detailText(grid,'Full address',o.address_text);
+  if(o.customer_note)detailText(grid,'Customer delivery instructions',o.customer_note);
+  if(o.packer_note)detailText(grid,'Packer instructions',o.packer_note);
+  if(o.partner_note)detailText(grid,'Delivery partner instructions',o.partner_note);
   if(o.location_lat!=null&&o.location_lng!=null){
     const map=document.createElement('a');
     map.href='https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(o.location_lat+','+o.location_lng);
