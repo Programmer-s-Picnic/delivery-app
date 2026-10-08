@@ -20,6 +20,20 @@
       expand.textContent='View all';
       expand.onclick=()=>this.show();
       head.append(this.title,expand);
+      this.soundsEnabled=false;
+      const sound=document.createElement('button');
+      sound.type='button';
+      sound.className='notification-sound-toggle';
+      sound.textContent='🔕';
+      sound.title='Enable notification sound';
+      sound.setAttribute('aria-label','Enable notification sound');
+      sound.onclick=()=>{
+        this.soundsEnabled=!this.soundsEnabled;
+        sound.textContent=this.soundsEnabled?'🔔':'🔕';
+        sound.title=this.soundsEnabled?'Mute notification sound':'Enable notification sound';
+        sound.setAttribute('aria-label',sound.title);
+      };
+      head.append(sound);
       this.preview=document.createElement('div');
       this.preview.className='notification-preview';
       this.preview.textContent=this.lockedMessage;
@@ -67,6 +81,8 @@
     stop(){
       this.active=false;
       this.seen.clear();
+      this.lastFingerprint=undefined;
+      this.lastIds=new Set();
       this.data={
         notifications:[],unreadCount:0
       };
@@ -89,6 +105,34 @@
       }
     }
     render(data){
+      const fingerprint=JSON.stringify((data.notifications||[]).map(n=>[n.id,n.message,n.read_at]));
+      const previous=this.lastFingerprint;
+      const changed=previous!==undefined&&previous!==fingerprint;
+      const lastIds=this.lastIds||new Set();
+      const newIds=new Set((data.notifications||[]).map(n=>String(n.id)));
+      const incoming=(data.notifications||[]).some(n=>!lastIds.has(String(n.id)));
+      this.lastFingerprint=fingerprint;
+      this.lastIds=newIds;
+      if(changed){
+        this.dock.classList.remove('notification-updated');
+        void this.dock.offsetWidth;
+        this.dock.classList.add('notification-updated');
+        if(this.counts){
+          this.counts.classList.remove('notification-bounce');
+          void this.counts.offsetWidth;
+          this.counts.classList.add('notification-bounce');
+        }
+        if(incoming&&this.soundsEnabled){
+          try{
+            const audio=new (window.AudioContext||window.webkitAudioContext)();
+            const oscillator=audio.createOscillator(),gain=audio.createGain();
+            oscillator.frequency.value=650;gain.gain.value=0.025;
+            oscillator.connect(gain);gain.connect(audio.destination);
+            oscillator.start();oscillator.stop(audio.currentTime+0.09);
+            oscillator.onended=()=>audio.close();
+          }catch(_){}
+        }
+      }
       this.data=data;
       this.title.textContent='Notifications · '+data.unreadCount+' unread';
       const unread=data.notifications.filter(n=>!n.read_at);
