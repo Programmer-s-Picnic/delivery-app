@@ -64,3 +64,7 @@
 .notification-count-badge.notification-bounce{animation:easyMandiNoticeCount .65s ease-out}
 .notification-sound-toggle{border:1px solid #cadbd0;border-radius:8px;background:transparent;font-size:15px;padding:5px 8px;cursor:pointer}
 @media(prefers-reduced-motion:reduce){.notification-dock.notification-updated,.notification-count-badge.notification-bounce{animation:none!important}}
+
+@keyframes easyMandiNoticeEntry{from{opacity:.35;transform:translateX(14px)}to{opacity:1;transform:translateX(0)}}
+.notification-entry-new{animation:easyMandiNoticeEntry .65s ease-out}
+@media(prefers-reduced-motion:reduce){.notification-entry-new{animation:none!important}}
