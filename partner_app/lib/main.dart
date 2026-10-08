@@ -725,6 +725,12 @@ class _JobsPageState extends State<JobsPage> {
                   ),
                 const SizedBox(height: 8),
                 paymentPanel(order),
+                if ('${order['customer_note'] ?? ''}'.trim().isNotEmpty)
+                  ListTile(leading:const Icon(Icons.notes),title:const Text('Customer instructions'),
+                    subtitle:Text('${order['customer_note']}')),
+                if ('${order['partner_note'] ?? ''}'.trim().isNotEmpty)
+                  ListTile(leading:const Icon(Icons.assignment_outlined),title:const Text('Delivery instructions'),
+                    subtitle:Text('${order['partner_note']}')),
                 ExpansionTile(
                   tilePadding: EdgeInsets.zero,
                   childrenPadding: const EdgeInsets.only(bottom: 10),
