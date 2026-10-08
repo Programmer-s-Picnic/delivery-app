@@ -57,3 +57,10 @@
 
  body {
   padding-bottom:210px!important}
+
+@keyframes easyMandiNoticePulse{0%{transform:translateY(10px);box-shadow:0 0 0 rgba(22,108,73,0)}45%{transform:translateY(-3px);box-shadow:0 0 0 5px rgba(22,108,73,.2)}100%{transform:translateY(0);box-shadow:0 5px 24px rgba(24,54,77,.2)}}
+@keyframes easyMandiNoticeCount{0%,100%{transform:scale(1)}35%{transform:scale(1.36)}}
+.notification-dock.notification-updated{animation:easyMandiNoticePulse .85s ease-out}
+.notification-count-badge.notification-bounce{animation:easyMandiNoticeCount .65s ease-out}
+.notification-sound-toggle{border:1px solid #cadbd0;border-radius:8px;background:transparent;font-size:15px;padding:5px 8px;cursor:pointer}
+@media(prefers-reduced-motion:reduce){.notification-dock.notification-updated,.notification-count-badge.notification-bounce{animation:none!important}}
