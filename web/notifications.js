@@ -108,7 +108,37 @@
       close.textContent='Close';
       close.onclick=()=>this.dialog.close();
       this.list=document.createElement('section');
-      this.dialog.append(close,this.list);
+      this.summary=document.createElement('section');
+      this.summary.className='notification-order-summary';
+      const bar=document.createElement('div');bar.className='notification-window-bar';
+      const grip=document.createElement('button');grip.type='button';grip.className='notification-drag-handle';grip.textContent='Notifications · drag to move';grip.setAttribute('aria-label','Move notifications window. Use arrow keys to move.');
+      bar.append(grip,close);
+      const body=document.createElement('div');body.className='notification-window-body';body.append(this.summary,this.list);
+      const resize=document.createElement('button');resize.type='button';resize.className='notification-resize-handle';resize.textContent='↘';resize.setAttribute('aria-label','Resize notifications window. Use arrow keys to resize.');
+      this.dialog.append(bar,body,resize);
+      this.place=(x,y,w,h)=>{
+        const vw=window.innerWidth,vh=window.innerHeight;
+        w=Math.min(vw-16,Math.max(Math.min(320,vw-16),w));h=Math.min(vh-16,Math.max(Math.min(240,vh-16),h));
+        this.geometry={x:Math.max(8,Math.min(vw-w-8,x)),y:Math.max(8,Math.min(vh-h-8,y)),w,h};
+        const g=this.geometry;Object.assign(this.dialog.style,{left:g.x+'px',top:g.y+'px',width:g.w+'px',height:g.h+'px'});
+      };
+      const bind=(handle,resizing)=>{
+        handle.addEventListener('pointerdown',event=>{
+          if(event.button!==0)return;
+          const rect=this.dialog.getBoundingClientRect();const start={x:event.clientX,y:event.clientY,left:rect.left,top:rect.top,w:rect.width,h:rect.height};
+          handle.setPointerCapture(event.pointerId);event.preventDefault();
+          const move=e=>{if(e.pointerId!==event.pointerId)return;const dx=e.clientX-start.x,dy=e.clientY-start.y;this.place(start.left+(resizing?0:dx),start.top+(resizing?0:dy),start.w+(resizing?dx:0),start.h+(resizing?dy:0));};
+          const end=e=>{if(e.pointerId!==event.pointerId)return;handle.removeEventListener('pointermove',move);handle.removeEventListener('pointerup',end);handle.removeEventListener('pointercancel',end);handle.removeEventListener('lostpointercapture',end);};
+          handle.addEventListener('pointermove',move);handle.addEventListener('pointerup',end);handle.addEventListener('pointercancel',end);handle.addEventListener('lostpointercapture',end);
+        });
+        handle.addEventListener('keydown',event=>{
+          const delta={ArrowLeft:[-20,0],ArrowRight:[20,0],ArrowUp:[0,-20],ArrowDown:[0,20]}[event.key];if(!delta)return;event.preventDefault();
+          const r=this.dialog.getBoundingClientRect();this.place(r.left+(resizing?0:delta[0]),r.top+(resizing?0:delta[1]),r.width+(resizing?delta[0]:0),r.height+(resizing?delta[1]:0));
+        });
+      };
+      bind(grip,false);bind(resize,true);
+      this.fitWindow=()=>{if(this.geometry){const g=this.geometry;this.place(g.x,g.y,g.w,g.h);}};
+      window.addEventListener('resize',this.fitWindow);
       document.body.append(this.dialog);
       this.view=root.closest('.view');
       this.syncView=()=>{
@@ -131,6 +161,7 @@
     }
     destroy(){
       this.stop();
+      window.removeEventListener('resize',this.fitWindow);
       clearInterval(this.timer);
       this.observer?.disconnect();
       window.removeEventListener('resize',this.onDockResize);
@@ -139,7 +170,11 @@
       this.preferences.destroy();
     }
     show(){
-      if(!this.dialog.open)this.dialog.showModal();
+      if(!this.dialog.open){
+        this.dialog.showModal();
+        if(this.geometry)this.fitWindow();
+        else {const w=Math.min(760,window.innerWidth-32),h=Math.min(680,window.innerHeight-32);this.place((window.innerWidth-w)/2,(window.innerHeight-h)/2,w,h);}
+      }
     }
     stop(){
       this.active=false;
