@@ -20,20 +20,17 @@
       expand.textContent='View all';
       expand.onclick=()=>this.show();
       head.append(this.title,expand);
-      this.soundsEnabled=false;
-      const sound=document.createElement('button');
-      sound.type='button';
-      sound.className='notification-sound-toggle';
-      sound.textContent='🔕';
-      sound.title='Enable notification sound';
-      sound.setAttribute('aria-label','Enable notification sound');
-      sound.onclick=()=>{
-        this.soundsEnabled=!this.soundsEnabled;
-        sound.textContent=this.soundsEnabled?'🔔':'🔕';
-        sound.title=this.soundsEnabled?'Mute notification sound':'Enable notification sound';
-        sound.setAttribute('aria-label',sound.title);
-      };
-      head.append(sound);
+      const hintedRole=String(root.id||'').match(/^(admin|customer|partner)Notifications$/)?.[1];
+      const role=hintedRole||(window.location?.pathname?.includes('/admin/')?'admin':'customer');
+      this.preferences=new window.NotificationPreferences(role);
+      const settings=document.createElement('button');
+      settings.type='button';
+      settings.className='notification-settings-toggle';
+      settings.textContent='⚙ Settings';
+      settings.title='Customize sounds, vibration and mute for each notification type';
+      settings.setAttribute('aria-label','Notification sound and vibration settings');
+      settings.onclick=()=>this.preferences.open();
+      head.append(settings);
       this.preview=document.createElement('div');
       this.preview.className='notification-preview';
       this.preview.textContent=this.lockedMessage;
@@ -74,6 +71,7 @@
       this.observer?.disconnect();
       this.dock.remove();
       this.dialog.remove();
+      this.preferences.destroy();
     }
     show(){
       if(!this.dialog.open)this.dialog.showModal();
@@ -109,9 +107,10 @@
       const previous=this.lastFingerprint;
       const changed=previous!==undefined&&previous!==fingerprint;
       const lastIds=this.lastIds||new Set();
-      const newIds=new Set((data.notifications||[]).map(n=>String(n.id)));
-      const incoming=(data.notifications||[]).some(n=>!lastIds.has(String(n.id)));
-      const freshIds=new Set(previous===undefined?[]:(data.notifications||[]).filter(n=>!lastIds.has(String(n.id))).map(n=>String(n.id)));
+      const noticeKey=n=>String(n.audience||n._audience||'')+':'+String(n.id);
+      const newIds=new Set((data.notifications||[]).map(noticeKey));
+      const freshIds=new Set(previous===undefined?[]:(data.notifications||[]).filter(n=>!n.read_at&&!lastIds.has(noticeKey(n))).map(noticeKey));
+      const incoming=freshIds.size>0;
       this.lastFingerprint=fingerprint;
       this.lastIds=newIds;
       if(changed){
@@ -123,16 +122,7 @@
           void this.counts.offsetWidth;
           this.counts.classList.add('notification-bounce');
         }
-        if(incoming&&this.soundsEnabled){
-          try{
-            const audio=new (window.AudioContext||window.webkitAudioContext)();
-            const oscillator=audio.createOscillator(),gain=audio.createGain();
-            oscillator.frequency.value=650;gain.gain.value=0.025;
-            oscillator.connect(gain);gain.connect(audio.destination);
-            oscillator.start();oscillator.stop(audio.currentTime+0.09);
-            oscillator.onended=()=>audio.close();
-          }catch(_){}
-        }
+        if(incoming)this.preferences.notify((data.notifications||[]).filter(n=>freshIds.has(String(n.audience||n._audience||'')+':'+String(n.id))));
       }
       this.data=data;
       this.title.textContent='Notifications · '+data.unreadCount+' unread';
@@ -155,7 +145,7 @@
       }
       for(const n of data.notifications){
         const row=document.createElement('article');
-        if(freshIds.has(String(n.id)))row.classList.add('notification-entry-new');
+        if(freshIds.has(noticeKey(n)))row.classList.add('notification-entry-new');
         row.style.background=n.read_at?'white':'#e8f2fc';
         const p=document.createElement('p');
         p.textContent=(n.read_at?'':'Unread · ')+n.message;
