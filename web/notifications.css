@@ -97,3 +97,28 @@
 @media(max-width:560px){.notice-settings-row{grid-template-columns:1fr 1fr;gap:7px}
 .notice-settings-row strong{grid-column:1/-1}.notice-settings-row button{justify-self:end}
 .notice-settings-row label:has(select){grid-column:1/-1}}
+
+
+/* Draggable notification preview: the handle remains separate from action buttons. */
+.notification-dock header { flex-wrap:wrap; }
+.notification-dock header > strong { flex:1 1 95px; min-width:0; font-size:13px; }
+.notification-dock .notification-move-handle {
+  flex:0 0 auto;
+  min-width:32px;
+  padding:6px 8px;
+  background:#e8f2fc;
+  color:#155a95;
+  border:1px solid #b5c9db;
+  border-radius:8px;
+  font-size:19px;
+  line-height:1.1;
+  cursor:grab;
+  touch-action:none;
+  user-select:none;
+}
+.notification-dock .notification-move-handle:active { cursor:grabbing; }
+.notification-dock .notification-move-handle:focus-visible {
+  outline:3px solid #126dba;
+  outline-offset:2px;
+}
+.notification-dock { box-sizing:border-box; max-width:calc(100vw - 16px); }
