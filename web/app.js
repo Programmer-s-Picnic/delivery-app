@@ -187,7 +187,7 @@ async function showOrderDetail(article,id){
   grid.className='detail-grid';
   detailText(grid,'Delivery ID',o.id);
   detailText(grid,'Source',o.source_app);
-  detailText(grid,'Source order ID',o.external_order_id);
+  detailText(grid,'Order number',o.external_order_id);
   detailText(grid,'Delivery status',o.status);
   detailText(grid,'Customer',o.customer_name);
   detailText(grid,'Mobile',o.customer_mobile);
