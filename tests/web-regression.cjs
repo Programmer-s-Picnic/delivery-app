@@ -25,7 +25,16 @@ const tick=()=>new Promise(r=>setImmediate(r));
  const easy=fs.existsSync(path.join(base,'admin/index.html'));
  const h=harness(fs.readFileSync(path.join(base,easy?'admin/index.html':'web/index.html'),'utf8'));let calls=[];
  h.ctx.fetch=async(url,options={})=>{calls.push({url,options});return {ok:true,status:200,json:async()=>url.includes('admin-session.php')?{token:'signed-token',expiresAt:Math.floor(Date.now()/1000)+1800}:url.includes('notifications')?{notifications:[{id:42,order_id:7,order_ref:'ABC',message:'Update',read_at:null}],unreadCount:1}:{orders:[],partners:[]}}};
- h.run(easy?'shared/api-client.js':'web/api-client.js');h.run(easy?'shared/admin-session.js':'web/admin-session.js');h.run(easy?'shared/notifications.js':'web/notifications.js');
+ h.run(easy?'shared/api-client.js':'web/api-client.js');h.run(easy?'shared/admin-session.js':'web/admin-session.js');h.run(easy?'shared/notification-settings.js':'web/notification-settings.js');h.run(easy?'shared/notifications.js':'web/notifications.js');
+ const prefs=new h.ctx.window.NotificationPreferences('partner');
+ assert.equal(h.ctx.window.classifyEasyMandiNotification({message:'Delivery 1: partner assigned'}),'delivery_assigned');
+ assert.equal(h.ctx.window.classifyEasyMandiNotification({message:'Your handoff code is 123456'}),'handoff_code');
+ assert.equal(h.ctx.window.classifyEasyMandiNotification({message:'Order 123: payment rejected'}),'payment_problem');
+ prefs.rules.delivery_assigned.sound='bell';prefs.rules.delivery_assigned.vibration=true;prefs.save();
+ const reloaded=new h.ctx.window.NotificationPreferences('partner');
+ assert.equal(reloaded.rules.delivery_assigned.sound,'bell');
+ reloaded.masterMute=true;reloaded.save();
+ assert.equal(new h.ctx.window.NotificationPreferences('partner').masterMute,true);
  await h.ctx.AdminSession.login('test-password');assert.equal(h.ctx.AdminSession.headers()['X-Admin-Session'],'signed-token');assert.equal(h.ctx.AdminSession.headers()['X-Admin-Password'],undefined);
  const dock=new h.ctx.NotificationInbox(new Element(),async()=>({notifications:[{id:42,order_id:7,message:'Update',read_at:null}],unreadCount:1}),async id=>{assert.equal(id,42)});dock.active=true;await dock.refresh();assert.equal(dock.title.textContent,'Notifications · 1 unread');await dock.save(42);dock.destroy();
  if(easy){
