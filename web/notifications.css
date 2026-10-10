@@ -122,3 +122,11 @@
   outline-offset:2px;
 }
 .notification-dock { box-sizing:border-box; max-width:calc(100vw - 16px); }
+
+/* Movable, resizable notification-history window (matching Easy Mandi admin). */
+.notification-modal { position:fixed; margin:0; padding:0; max-width:none; max-height:none; min-width:0; overflow:hidden; }
+.notification-window-bar { display:flex; align-items:center; gap:12px; padding:12px 16px; background:#e8f2fc; border-bottom:1px solid #d9e5ef; }
+.notification-modal .notification-drag-handle { flex:1; text-align:left; background:transparent; color:#18364d; font-weight:750; cursor:move; touch-action:none; user-select:none; }
+.notification-window-body { height:calc(100% - 78px); overflow:auto; padding:16px 20px 28px; overscroll-behavior:contain; box-sizing:border-box; }
+.notification-modal .notification-resize-handle { position:absolute; bottom:0; right:0; width:30px; height:30px; padding:0; cursor:nwse-resize; touch-action:none; background:#e8f2fc; color:#126dba; font-size:22px; }
+.notification-modal button:focus-visible { outline:3px solid #126dba; outline-offset:2px; }
