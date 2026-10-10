@@ -38,8 +38,9 @@ jobs:
           rm -f test/widget_test.dart analysis_options.yaml
           sed -i 's/<application/<uses-permission android:name="android.permission.INTERNET"\/><application/' android/app/src/main/AndroidManifest.xml
           sed -i 's/android:label="delivery_partner"/android:label="Easy Mandi Delivery Partner"/' android/app/src/main/AndroidManifest.xml
-          python3 -m pip install --user pillow
-          python3 icon/generate.py
+          python3 -m venv "$RUNNER_TEMP/delivery-brand-venv"
+          "$RUNNER_TEMP/delivery-brand-venv/bin/pip" install pillow
+          "$RUNNER_TEMP/delivery-brand-venv/bin/python" icon/generate.py
           flutter pub get
           flutter analyze
           flutter test
