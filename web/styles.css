@@ -446,3 +446,8 @@ button.partner-avatar { display:flex; justify-content:center; align-items:center
 .partner-avatar span { display:flex; }
 
 .payment-state{font-weight:700;color:#155a95;background:#e8f2fc;padding:9px 12px;border-radius:9px;}
+
+/* Unified brand symbol and delivery administration identity. */
+header .brand .logo{display:block;object-fit:contain;flex:none;width:48px;height:48px;background:transparent;border-radius:12px;padding:0}
+header .brand strong{color:#155a36}
+header .brand small{color:#3f6b51}
