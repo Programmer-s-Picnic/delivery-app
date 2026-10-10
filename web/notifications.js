@@ -31,11 +31,75 @@
       settings.setAttribute('aria-label','Notification sound and vibration settings');
       settings.onclick=()=>this.preferences.open();
       head.append(settings);
+
+      const moveHandle=document.createElement('button');
+      moveHandle.type='button';
+      moveHandle.className='notification-move-handle';
+      moveHandle.textContent='⠿';
+      moveHandle.title='Drag to move notifications · Arrow keys to move · Double-click to reset';
+      moveHandle.setAttribute('aria-label','Move notification box: drag or press arrow keys. Double-click to reset position.');
+      head.prepend(moveHandle);
       this.preview=document.createElement('div');
       this.preview.className='notification-preview';
       this.preview.textContent=this.lockedMessage;
       this.dock.append(head,this.preview);
       document.body.append(this.dock);
+
+      // Keep the compact notification box movable without interfering with its buttons.
+      // Each role has its own browser-local position; no server or account data changes.
+      this.dockPositionKey='easy-mandi-notification-position-v1-'+role;
+      const placeDock=(x,y)=>{
+        const pad=8;
+        const left=Math.max(pad,Math.min(x,Math.max(pad,window.innerWidth-this.dock.offsetWidth-pad)));
+        const top=Math.max(pad,Math.min(y,Math.max(pad,window.innerHeight-this.dock.offsetHeight-pad)));
+        Object.assign(this.dock.style,{left:left+'px',top:top+'px',right:'auto',bottom:'auto'});
+        this.dockPosition={x:left,y:top};
+      };
+      const saveDock=()=>{
+        if(!this.dockPosition)return;
+        try { localStorage.setItem(this.dockPositionKey,JSON.stringify(this.dockPosition)); }
+        catch (_) { /* Browser storage may be disabled. */ }
+      };
+      try {
+        const saved=JSON.parse(localStorage.getItem(this.dockPositionKey)||'null');
+        if(saved&&Number.isFinite(saved.x)&&Number.isFinite(saved.y))placeDock(saved.x,saved.y);
+      } catch (_) { /* Use default bottom-right position. */ }
+      this.onDockResize=()=>{if(this.dockPosition){placeDock(this.dockPosition.x,this.dockPosition.y);saveDock();}};
+      window.addEventListener('resize',this.onDockResize);
+      let dockDrag=null;
+      moveHandle.addEventListener('pointerdown',event=>{
+        if(event.button!==0||this.dock.hidden)return;
+        const rect=this.dock.getBoundingClientRect();
+        dockDrag={id:event.pointerId,x:event.clientX,y:event.clientY,left:rect.left,top:rect.top};
+        moveHandle.setPointerCapture(event.pointerId);
+        event.preventDefault();
+      });
+      moveHandle.addEventListener('pointermove',event=>{
+        if(!dockDrag||dockDrag.id!==event.pointerId)return;
+        placeDock(dockDrag.left+event.clientX-dockDrag.x,dockDrag.top+event.clientY-dockDrag.y);
+      });
+      const finishDockDrag=event=>{
+        if(!dockDrag||dockDrag.id!==event.pointerId)return;
+        dockDrag=null;
+        saveDock();
+      };
+      moveHandle.addEventListener('pointerup',finishDockDrag);
+      moveHandle.addEventListener('pointercancel',finishDockDrag);
+      moveHandle.addEventListener('lostpointercapture',finishDockDrag);
+      moveHandle.addEventListener('keydown',event=>{
+        const delta={ArrowLeft:[-20,0],ArrowRight:[20,0],ArrowUp:[0,-20],ArrowDown:[0,20]}[event.key];
+        if(!delta)return;
+        event.preventDefault();
+        const rect=this.dock.getBoundingClientRect();
+        placeDock(rect.left+delta[0],rect.top+delta[1]);
+        saveDock();
+      });
+      moveHandle.addEventListener('dblclick',()=>{
+        dockDrag=null;
+        this.dockPosition=null;
+        Object.assign(this.dock.style,{left:'',top:'',right:'',bottom:''});
+        try { localStorage.removeItem(this.dockPositionKey); } catch (_) {}
+      });
       this.dialog=document.createElement('dialog');
       this.dialog.className='notification-modal';
       this.dialog.setAttribute('aria-label','Notification history');
@@ -69,6 +133,7 @@
       this.stop();
       clearInterval(this.timer);
       this.observer?.disconnect();
+      window.removeEventListener('resize',this.onDockResize);
       this.dock.remove();
       this.dialog.remove();
       this.preferences.destroy();
