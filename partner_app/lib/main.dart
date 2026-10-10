@@ -34,8 +34,8 @@ class PartnerApp extends StatelessWidget {
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
           useMaterial3: true,
-          colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF0879B7)),
-          scaffoldBackgroundColor: const Color(0xFFF6F9FC),
+          colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF176B46)),
+          scaffoldBackgroundColor: const Color(0xFFF4FAF6),
           inputDecorationTheme: InputDecorationTheme(
             filled: true,
             fillColor: Colors.white,
@@ -916,14 +916,11 @@ class _JobsPageState extends State<JobsPage> {
         padding: const EdgeInsets.all(20),
         children: [
           const SizedBox(height: 28),
-          Icon(
-            Icons.local_shipping_outlined,
-            size: 72,
-            color: Theme.of(context).colorScheme.primary,
-          ),
+          Center(child: Image.asset('assets/brand-symbol.png',width:110,height:110,
+            errorBuilder:(_,__,___)=>const Icon(Icons.shopping_cart_outlined,size:72))),
           const SizedBox(height: 12),
           Text(
-            'Delivery Partner',
+            'Easy Mandi · Delivery Partner',
             textAlign: TextAlign.center,
             style: Theme.of(context)
                 .textTheme
@@ -977,9 +974,13 @@ class _JobsPageState extends State<JobsPage> {
     final shown = visibleJobs;
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          token == null ? 'Delivery Partner' : 'Delivery Partner · $unread unread',
-        ),
+        title: Row(mainAxisSize:MainAxisSize.min,children:[
+          Image.asset('assets/brand-symbol.png',width:35,height:35,
+            errorBuilder:(_,__,___)=>const Icon(Icons.shopping_cart_outlined)),
+          const SizedBox(width:8),
+          Flexible(child:Text(token == null ? 'Easy Mandi Delivery' : 'Deliveries · $unread',
+            maxLines:1,overflow:TextOverflow.ellipsis)),
+        ]),
         actions: [
           IconButton(
             tooltip: 'How to use',
