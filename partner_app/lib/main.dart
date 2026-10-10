@@ -452,7 +452,7 @@ class _JobsPageState extends State<JobsPage> {
                       final scanned = await Navigator.of(dialogContext).push<String>(
                         MaterialPageRoute(
                           builder: (_) =>
-                              HandoffScannerPage(expectedDeliveryId: deliveryId),
+                              HandoffScannerPage(expectedDeliveryId: deliveryId, expectedOrderRef: order['external_order_id'].toString()),
                         ),
                       );
                       if (scanned != null && dialogContext.mounted) {
@@ -1090,9 +1090,10 @@ class _JobsPageState extends State<JobsPage> {
 }
 
 class HandoffScannerPage extends StatefulWidget {
-  const HandoffScannerPage({super.key, required this.expectedDeliveryId});
+  const HandoffScannerPage({super.key, required this.expectedDeliveryId, required this.expectedOrderRef});
 
   final int expectedDeliveryId;
+  final String expectedOrderRef;
 
   @override
   State<HandoffScannerPage> createState() => _HandoffScannerPageState();
@@ -1124,10 +1125,13 @@ class _HandoffScannerPageState extends State<HandoffScannerPage> {
     final delivery = int.tryParse(uri.queryParameters['delivery'] ?? '');
     final code = uri.queryParameters['code'] ?? '';
 
-    if (delivery != widget.expectedDeliveryId) {
+    final orderRef = uri.queryParameters['order'];
+    final correct = orderRef != null
+        ? orderRef == widget.expectedOrderRef
+        : delivery == widget.expectedDeliveryId;
+    if (!correct) {
       setState(() {
-        message =
-            'This QR belongs to delivery ${delivery ?? 'unknown'}, not delivery ${widget.expectedDeliveryId}.';
+        message = 'This QR belongs to another order, not ${widget.expectedOrderRef}.';
       });
       return null;
     }
@@ -1173,7 +1177,7 @@ class _HandoffScannerPageState extends State<HandoffScannerPage> {
   @override
   Widget build(BuildContext context) => Scaffold(
         appBar: AppBar(
-          title: Text('Scan delivery ${widget.expectedDeliveryId} QR'),
+          title: Text('Scan order ${widget.expectedOrderRef} QR'),
           actions: [
             IconButton(
               tooltip: 'Torch',
