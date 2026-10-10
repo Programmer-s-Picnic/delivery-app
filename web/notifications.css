@@ -68,3 +68,32 @@
 @keyframes easyMandiNoticeEntry{from{opacity:.35;transform:translateX(14px)}to{opacity:1;transform:translateX(0)}}
 .notification-entry-new{animation:easyMandiNoticeEntry .65s ease-out}
 @media(prefers-reduced-motion:reduce){.notification-entry-new{animation:none!important}}
+
+/* Separate sound and vibration controls for every notification event. */
+.notification-dock .notification-settings-toggle{
+  flex:0 0 auto;background:#e8f2fc;color:#155a95;
+  padding:7px 9px;font-size:12px;border:1px solid #b5c9db;
+}
+.notification-settings-dialog{
+  box-sizing:border-box;width:min(760px,calc(100vw - 24px));max-height:min(85vh,800px);
+  padding:18px;border:1px solid #b5c9db;border-radius:16px;
+  background:#fff;color:#193b55;font:14px/1.45 system-ui;overflow:auto;
+}
+.notification-settings-dialog::backdrop{background:#152f47a8}
+.notification-settings-dialog h2{margin:0 0 8px;font-size:21px;color:#164975}
+.notification-settings-dialog p{margin:0 0 14px;color:#486479}
+.notice-settings-master{display:block;background:#e8f2fc;padding:11px;border-radius:10px;font-weight:650;margin-bottom:10px}
+.notice-settings-rows{display:grid;gap:8px}
+.notice-settings-row{
+  display:grid;grid-template-columns:minmax(125px,1fr) auto auto minmax(130px,160px) auto;
+  align-items:center;gap:9px;padding:11px;background:#f5f9ff;
+  border:1px solid #dae7f3;border-radius:10px;
+}
+.notice-settings-row label{display:flex;align-items:center;gap:4px;white-space:nowrap}
+.notice-settings-row select{width:100%;min-width:90px;padding:6px;border:1px solid #b5c9db;border-radius:6px;background:#fff;color:#164975}
+.notification-settings-dialog button{background:#126dba;color:#fff;border:0;border-radius:7px;padding:9px;cursor:pointer}
+.notice-settings-footer{position:sticky;bottom:-18px;background:#fff;padding:10px 0 0;display:flex;justify-content:flex-end}
+.notification-settings-dialog :is(button,select,input):focus-visible{outline:3px solid #126dba;outline-offset:2px}
+@media(max-width:560px){.notice-settings-row{grid-template-columns:1fr 1fr;gap:7px}
+.notice-settings-row strong{grid-column:1/-1}.notice-settings-row button{justify-self:end}
+.notice-settings-row label:has(select){grid-column:1/-1}}
