@@ -130,3 +130,6 @@
 .notification-window-body { height:calc(100% - 78px); overflow:auto; padding:16px 20px 28px; overscroll-behavior:contain; box-sizing:border-box; }
 .notification-modal .notification-resize-handle { position:absolute; bottom:0; right:0; width:30px; height:30px; padding:0; cursor:nwse-resize; touch-action:none; background:#e8f2fc; color:#126dba; font-size:22px; }
 .notification-modal button:focus-visible { outline:3px solid #126dba; outline-offset:2px; }
+
+/* Keep the notification box usable on short and mobile screens. */
+.notification-dock { max-height:calc(100dvh - 16px); overflow-y:auto; }
