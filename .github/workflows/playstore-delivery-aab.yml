@@ -1,0 +1,85 @@
+name: Build Play Store delivery partner AAB (release upload key)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    env:
+      PLAY_UPLOAD_KEYSTORE_BASE64: ${{ secrets.EASYMANDI_DELIVERY_UPLOAD_KEYSTORE_BASE64 }}
+      PLAY_UPLOAD_STORE_PASSWORD: ${{ secrets.EASYMANDI_DELIVERY_UPLOAD_STORE_PASSWORD }}
+      PLAY_UPLOAD_KEY_ALIAS: ${{ secrets.EASYMANDI_DELIVERY_UPLOAD_KEY_ALIAS }}
+      PLAY_UPLOAD_KEY_PASSWORD: ${{ secrets.EASYMANDI_DELIVERY_UPLOAD_KEY_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - name: Require production delivery upload key
+        run: |
+          set -euo pipefail
+          for item in PLAY_UPLOAD_KEYSTORE_BASE64 PLAY_UPLOAD_STORE_PASSWORD PLAY_UPLOAD_KEY_ALIAS PLAY_UPLOAD_KEY_PASSWORD; do
+            test -n "${!item}" || { echo "::error::Missing GitHub Actions secret $item"; exit 1; }
+          done
+          printf '%s' "$PLAY_UPLOAD_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/easy-mandi-delivery-upload.jks"
+          chmod 600 "$RUNNER_TEMP/easy-mandi-delivery-upload.jks"
+          keytool -list -keystore "$RUNNER_TEMP/easy-mandi-delivery-upload.jks" \
+            -storepass "$PLAY_UPLOAD_STORE_PASSWORD" -alias "$PLAY_UPLOAD_KEY_ALIAS" >/dev/null
+      - name: Recreate delivery Android project and apply official brand
+        run: |
+          set -euo pipefail
+          cp partner_app/pubspec.yaml /tmp/partner-pubspec.yaml
+          cp partner_app/lib/main.dart /tmp/partner-main.dart
+          cd partner_app
+          flutter create --platforms=android --org live.learnwithchampak .
+          cp /tmp/partner-pubspec.yaml pubspec.yaml
+          cp /tmp/partner-main.dart lib/main.dart
+          rm -f test/widget_test.dart analysis_options.yaml
+          sed -i 's/<application/<uses-permission android:name="android.permission.INTERNET"\/><application/' android/app/src/main/AndroidManifest.xml
+          sed -i 's/android:label="delivery_partner"/android:label="Easy Mandi Delivery Partner"/' android/app/src/main/AndroidManifest.xml
+          python3 -m pip install --user pillow
+          python3 icon/generate.py
+          flutter pub get
+          flutter analyze
+          flutter test
+          test -f android/app/build.gradle.kts
+          grep -F 'applicationId = "live.learnwithchampak.delivery_partner"' android/app/build.gradle.kts
+      - name: Sign Android App Bundle using upload key (never debug)
+        run: |
+          cd partner_app
+          cat >> android/app/build.gradle.kts <<'KOTLIN'
+
+          android {
+            signingConfigs {
+              create("easyMandiDeliveryPlayUpload") {
+                storeFile = file(System.getenv("RUNNER_TEMP") + "/easy-mandi-delivery-upload.jks")
+                storePassword = System.getenv("PLAY_UPLOAD_STORE_PASSWORD")
+                keyAlias = System.getenv("PLAY_UPLOAD_KEY_ALIAS")
+                keyPassword = System.getenv("PLAY_UPLOAD_KEY_PASSWORD")
+              }
+            }
+            buildTypes {
+              getByName("release") {
+                signingConfig = signingConfigs.getByName("easyMandiDeliveryPlayUpload")
+              }
+            }
+          }
+          KOTLIN
+          flutter build appbundle --release
+      - name: Verify signed delivery bundle
+        run: |
+          set -euo pipefail
+          BUNDLE=partner_app/build/app/outputs/bundle/release/app-release.aab
+          test -s "$BUNDLE"
+          unzip -tq "$BUNDLE" >/dev/null
+          jarsigner -verify "$BUNDLE"
+          sha256sum "$BUNDLE"
+          keytool -list -v -keystore "$RUNNER_TEMP/easy-mandi-delivery-upload.jks" \
+            -storepass "$PLAY_UPLOAD_STORE_PASSWORD" -alias "$PLAY_UPLOAD_KEY_ALIAS" \
+            | grep -E 'SHA1:|SHA256:'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: EasyMandi-DeliveryPartner-PlayStore-AAB
+          path: partner_app/build/app/outputs/bundle/release/app-release.aab
+          retention-days: 90
