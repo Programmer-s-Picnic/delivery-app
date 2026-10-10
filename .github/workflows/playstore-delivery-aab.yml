@@ -51,6 +51,11 @@ jobs:
           cat >> android/app/build.gradle.kts <<'KOTLIN'
 
           android {
+            // Google Play new releases require API 36+ from August 2026.
+            compileSdk = 36
+            defaultConfig {
+              targetSdk = 36
+            }
             signingConfigs {
               create("easyMandiDeliveryPlayUpload") {
                 storeFile = file(System.getenv("RUNNER_TEMP") + "/easy-mandi-delivery-upload.jks")
