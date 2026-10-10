@@ -9,6 +9,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'notification_overlay.dart';
+import 'notification_settings.dart';
 
 const endpoint = 'https://cserver.learnwithchampak.live/delivery/api/';
 const storage = FlutterSecureStorage();
@@ -61,6 +62,7 @@ class _JobsPageState extends State<JobsPage> {
   final password = TextEditingController();
   final search = TextEditingController();
   final Set<String> shownNotifications = {};
+  bool notificationsPrimed = false;
   Timer? timer;
   String? token;
   String? error;
@@ -234,6 +236,10 @@ class _JobsPageState extends State<JobsPage> {
       for (final n in incoming) {
         shownNotifications.add(n['id'].toString());
       }
+      if (notificationsPrimed && fresh.isNotEmpty) {
+        unawaited(MandiNoticeSettings.instance.notify('partner', fresh.map((n) => Map<String,dynamic>.from(n as Map)).toList()));
+      }
+      notificationsPrimed = true;
       if (fresh.isNotEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -306,6 +312,7 @@ class _JobsPageState extends State<JobsPage> {
       jobs = [];
       notifications = [];
       shownNotifications.clear();
+      notificationsPrimed = false;
       search.clear();
       filter = 'active';
       error = null;
@@ -982,6 +989,12 @@ class _JobsPageState extends State<JobsPage> {
             maxLines:1,overflow:TextOverflow.ellipsis)),
         ]),
         actions: [
+          IconButton(
+            tooltip: 'Notification settings',
+            onPressed: () => Navigator.push(context,MaterialPageRoute<void>(
+              builder: (_) => const MandiNotificationSettingsPage(role:'partner'))),
+            icon: const Icon(Icons.notifications_active_outlined),
+          ),
           IconButton(
             tooltip: 'How to use',
             onPressed: showHelp,
