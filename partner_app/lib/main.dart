@@ -10,6 +10,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import 'notification_overlay.dart';
 import 'notification_settings.dart';
+import 'app_update.dart';
 
 const endpoint = 'https://cserver.learnwithchampak.live/delivery/api/';
 const storage = FlutterSecureStorage();
@@ -72,6 +73,37 @@ class _JobsPageState extends State<JobsPage> {
   List<dynamic> jobs = [];
   List<dynamic> notifications = [];
   DateTime? lastUpdated;
+  ApkUpdate? availableApk;
+
+  Future<void> checkApkUpdate({bool manual = false}) async {
+    try {
+      final result = await ApkUpdateChecker.check('delivery');
+      if (!mounted) return;
+      setState(() => availableApk = result);
+      if (manual && result == null) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('No newer delivery partner APK has been published.')));
+      }
+    } catch (_) {
+      if (manual && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Could not check for updates. Please try again.')));
+      }
+    }
+  }
+
+  Future<void> openApkUpdate() async {
+    final update = availableApk;
+    if (update == null) return;
+    try {
+      if (await launchUrl(update.url, mode: LaunchMode.externalApplication)) return;
+    } catch (_) { /* The browser may not be available. */ }
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Cannot open the APK download link.')));
+    }
+  }
+
 
   static const statusLabels = <String, String>{
     'assigned': 'Assigned',
@@ -89,6 +121,7 @@ class _JobsPageState extends State<JobsPage> {
     notificationMark =
         (n) => markNotifications(n == null ? null : (n['id'] as num).toInt());
     restore();
+    unawaited(checkApkUpdate());
     timer = Timer.periodic(const Duration(minutes: 5), (_) {
       if (token != null &&
           !busy &&
@@ -995,10 +1028,16 @@ class _JobsPageState extends State<JobsPage> {
               builder: (_) => const MandiNotificationSettingsPage(role:'partner'))),
             icon: const Icon(Icons.notifications_active_outlined),
           ),
-          IconButton(
-            tooltip: 'How to use',
-            onPressed: showHelp,
-            icon: const Icon(Icons.help_outline),
+          PopupMenuButton<String>(
+            tooltip: 'More options',
+            onSelected: (action) {
+              if (action == 'help') showHelp();
+              if (action == 'update') checkApkUpdate(manual: true);
+            },
+            itemBuilder: (_) => const [
+              PopupMenuItem(value: 'help', child: Text('How to use')),
+              PopupMenuItem(value: 'update', child: Text('Check for APK update')),
+            ],
           ),
           if (token != null)
             IconButton(
@@ -1013,6 +1052,29 @@ class _JobsPageState extends State<JobsPage> {
               icon: const Icon(Icons.logout),
             ),
         ],
+        bottom: availableApk == null ? null : PreferredSize(
+          preferredSize: const Size.fromHeight(58),
+          child: Container(
+            height: 58,
+            color: const Color(0xFFE0F2E9),
+            padding: const EdgeInsets.symmetric(horizontal: 6),
+            child: Row(children: [
+              const Icon(Icons.system_update_alt, size: 20, color: Color(0xFF176B46)),
+              const SizedBox(width: 7),
+              Expanded(child: Text(
+                'New APK ' + availableApk!.version + ' available',
+                maxLines: 2, overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+              )),
+              TextButton(onPressed: openApkUpdate, child: const Text('Update APK')),
+              IconButton(
+                tooltip: 'Later',
+                icon: const Icon(Icons.close, size: 18),
+                onPressed: () => setState(() => availableApk = null),
+              ),
+            ]),
+          ),
+        ),
       ),
       body: token == null
           ? loginView()
