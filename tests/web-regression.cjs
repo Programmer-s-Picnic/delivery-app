@@ -3,6 +3,7 @@ const base=path.resolve(__dirname,'..');
 class Element {
  constructor(tag='div'){this.tagName=tag;this.children=[];this.listeners={};this.dataset={};this.value='';this.hidden=false;this.textContent='';this.style={};this.parentElement={hidden:false};this.open=false;this.attributes={};this.previousElementSibling={textContent:''};}
  append(...nodes){if(this.tagName==='select'&&!this.children.length&&nodes[0])this.value=nodes[0].value;this.children.push(...nodes);nodes.forEach(n=>{if(n&&typeof n==='object')n.parentElement=this;});}
+ prepend(...nodes){this.children.unshift(...nodes);nodes.forEach(n=>{if(n&&typeof n==='object')n.parentElement=this;});}
  replaceChildren(...nodes){this.children=[];this.append(...nodes);}
  after(){} insertBefore(n){this.append(n)} closest(){return null} remove(){} focus(){} scrollIntoView(){}
  setAttribute(k,v){this.attributes[k]=v} getAttribute(k){return this.attributes[k]}
