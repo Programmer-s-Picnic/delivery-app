@@ -1,5 +1,10 @@
 name: Build Play Store delivery partner AAB (release upload key)
 on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/playstore-delivery-aab.yml'
+      - 'partner_app/**'
   workflow_dispatch:
 permissions:
   contents: read
