@@ -17,7 +17,7 @@ function harness(html){
  const nodes={};for(const [,id]of html.matchAll(/\bid="([^"]+)"/g))nodes[id]=new Element();
  const all=[];const document={hidden:false,head:new Element(),body:new Element(),getElementById:id=>nodes[id]||all.find(n=>n.id===id),createElement:tag=>{const n=new Element(tag);all.push(n);return n},createTextNode:text=>text,querySelectorAll:()=>[],addEventListener(){}};
  const memory=new Map(),storage={getItem:k=>memory.get(k)||null,setItem:(k,v)=>memory.set(k,String(v)),removeItem:k=>memory.delete(k)};
- const events={},timers=[];const window={addEventListener:(n,f)=>(events[n]??=[]).push(f),dispatchEvent:e=>(events[e.type]||[]).forEach(f=>f())};
+ const events={},timers=[];const window={addEventListener:(n,f)=>(events[n]??=[]).push(f),removeEventListener:(n,f)=>{events[n]=(events[n]||[]).filter(x=>x!==f);},dispatchEvent:e=>(events[e.type]||[]).forEach(f=>f())};
  const ctx={window,document,sessionStorage:storage,localStorage:storage,AbortController,URL,URLSearchParams,TextEncoder,crypto:require('node:crypto').webcrypto,Date,Event,console,confirm:()=>true,alert(){},navigator:{},location:{search:''},setInterval:f=>{timers.push(f);return timers.length},clearInterval(){},setTimeout:f=>{timers.push(f);return timers.length},clearTimeout(){},MutationObserver:class{observe(){}disconnect(){}},FormData:class{constructor(form){this.values=form.values||{}}get(k){return this.values[k]}}};
  vm.createContext(ctx);return {ctx,nodes,storage,timers,run:p=>{vm.runInContext(fs.readFileSync(path.join(base,p),'utf8'),ctx,{filename:p});if(ctx.window.AppHttp)ctx.AppHttp=ctx.window.AppHttp;if(ctx.window.AdminSession)ctx.AdminSession=ctx.window.AdminSession;if(ctx.window.NotificationInbox)ctx.NotificationInbox=ctx.window.NotificationInbox;}};
 }
