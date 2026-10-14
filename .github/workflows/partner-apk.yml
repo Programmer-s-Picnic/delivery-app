@@ -25,7 +25,7 @@ jobs:
           rm -f test/widget_test.dart analysis_options.yaml
           sed -i 's/<application/<uses-permission android:name="android.permission.INTERNET"\/><application/' android/app/src/main/AndroidManifest.xml
           sed -i 's/android:label="delivery_partner"/android:label="Delivery Partner"/' android/app/src/main/AndroidManifest.xml
-          python3 -m pip install --user pillow
+          python3 -m pip install --user pillow cairosvg
           python3 icon/generate.py
           flutter pub get
           flutter analyze

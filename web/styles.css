@@ -451,3 +451,8 @@ button.partner-avatar { display:flex; justify-content:center; align-items:center
 header .brand .logo{display:block;object-fit:contain;flex:none;width:48px;height:48px;background:transparent;border-radius:12px;padding:0}
 header .brand strong{color:#155a36}
 header .brand small{color:#3f6b51}
+
+/* Official orange/green Hindi wordmark, shared with the customer storefront. */
+header .brand .logo{width:148px;height:62px;object-fit:contain;border-radius:0;background:transparent;color:inherit;display:block}
+@media(max-width:700px){header .brand .logo{width:118px;height:49px}header .brand small{display:none}}
+@media(max-width:400px){header .brand .logo{width:99px;height:43px}header .brand{gap:7px}}
