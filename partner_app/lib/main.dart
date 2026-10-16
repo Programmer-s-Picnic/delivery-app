@@ -652,24 +652,36 @@ class _JobsPageState extends State<JobsPage> {
     );
   }
 
-  String deliveryTarget(Map<String,dynamic> order) {
-    final raw=order['source_created_at'];
-    if (raw == null || raw.toString().trim().isEmpty) {
-      return 'Delivery commitment: within 4 working hours. Keep ordering with Easy Mandi and save on MANDI rate.';
+  String deliveryTarget(Map<String,dynamic> order){
+    final raw=order['source_confirmed_at'];
+    if(raw==null || raw.toString().trim().isEmpty){
+      return 'Awaiting order confirmation. Delivery attempted within 60 service minutes after confirmation (7 AM–11 PM IST).';
     }
-    var text=raw.toString().trim();
-    if (RegExp(r'^\d{4}-\d\d-\d\d[ T]\d\d:\d\d').hasMatch(text) &&
-        !RegExp(r'(?:Z|[+-]\d\d:?\d\d)$',caseSensitive:false).hasMatch(text)) {
-      text=text.replaceFirst(' ','T')+'+05:30';
+    var value=raw.toString().trim();
+    if(RegExp(r'^\d{4}-\d\d-\d\d[ T]\d\d:\d\d').hasMatch(value) &&
+       !RegExp(r'(?:Z|[+-]\d\d:?\d\d)$',caseSensitive:false).hasMatch(value)){
+      value=value.replaceFirst(' ','T')+'+05:30';
     }
-    final placed=DateTime.tryParse(text);
-    if (placed==null) return 'Delivery commitment: within 4 working hours.';
-    String clock(DateTime value) {
-      final ist=value.toUtc().add(const Duration(hours:5,minutes:30));
-      String two(int n)=>n.toString().padLeft(2,'0');
-      return '${two(ist.hour)}:${two(ist.minute)}';
+    final confirmed=DateTime.tryParse(value);
+    if(confirmed==null)return 'Delivery target unavailable — check confirmation time.';
+    const offset=Duration(hours:5,minutes:30);
+    var local=confirmed.toUtc().add(offset);
+    final morning=DateTime.utc(local.year,local.month,local.day,7);
+    final closing=DateTime.utc(local.year,local.month,local.day,23);
+    if(local.isBefore(morning))local=morning;
+    else if(!local.isBefore(closing))local=morning.add(const Duration(days:1));
+    final end=DateTime.utc(local.year,local.month,local.day,23);
+    final remaining=end.difference(local);
+    final due=remaining>=const Duration(minutes:60)
+       ?local.add(const Duration(minutes:60))
+       :DateTime.utc(local.year,local.month,local.day+1,7)
+          .add(const Duration(minutes:60)).subtract(remaining);
+    String clock(DateTime at){
+      final local=at.toUtc().add(offset);
+      String pad(int n)=>n.toString().padLeft(2,'0');
+      return '${pad(local.hour)}:${pad(local.minute)}';
     }
-    return 'Order Time: ${clock(placed)} · Max Order Delivery Time: ${clock(placed.add(const Duration(hours:4)))} IST. Delivery within 4 working hours.';
+    return 'Confirmed ${clock(confirmed)} · Attempt by ${clock(due.subtract(offset))} IST. Traffic or high-demand delays possible.';
   }
 
   Widget jobCard(Map<String, dynamic> order) {

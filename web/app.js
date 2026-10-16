@@ -133,9 +133,9 @@ async function loadAdmin(focusId=null){
     article.append(title,details,select,assign,print);
     if(o.source_app==='easymandi'){
       const target=document.createElement('p');target.className='delivery-target-notice';
-      target.textContent=o.source_created_at&&window.EasyMandiDeliveryWindow?
-        window.EasyMandiDeliveryWindow.message(o.source_created_at):
-        'Delivery commitment: within 4 working hours. Keep ordering with Easy Mandi and save on MANDI rate.';
+      target.textContent=window.EasyMandiDeliveryWindow?
+        window.EasyMandiDeliveryWindow.message({created_at:o.source_created_at,confirmed_at:o.source_confirmed_at}):
+        'Awaiting confirmation · Delivery attempted within 60 service minutes after confirmation.';
       article.append(target);
     }
     if(o.location_lat!=null&&o.location_lng!=null){
@@ -215,7 +215,7 @@ async function showOrderDetail(article,id){
   detailText(grid,'Full address',o.address_text);
   if(o.source_app==='easymandi'&&window.EasyMandiDeliveryWindow){
     const line=document.createElement('p');line.className='delivery-target-notice';
-    line.textContent=window.EasyMandiDeliveryWindow.message(o.source_created_at)||'Delivery commitment: within 4 working hours.';
+    line.textContent=window.EasyMandiDeliveryWindow.message({created_at:o.source_created_at,confirmed_at:o.source_confirmed_at});
     grid.append(line);
   }
   if(o.customer_note)detailText(grid,'Customer delivery instructions',o.customer_note);
