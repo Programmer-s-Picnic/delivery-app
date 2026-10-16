@@ -28,6 +28,14 @@
     }).join('');
     const notes=[order.customer_note,order.packer_note,order.partner_note].map(x=>String(x||'').trim()).filter(Boolean).map(h).join(' / ')||'None';
     const totalWeight=weight?format(weight)+' kg'+(unknown?'*':''):'—';
+    const confirmed=order.source_confirmed_at||order.confirmed_at||null;
+    const target=order.delivery_target_at||(
+      confirmed&&window.EasyMandiDeliveryWindow?.targetAt
+        ?window.EasyMandiDeliveryWindow.targetAt(confirmed):null);
+    const ist=raw=>window.EasyMandiDeliveryWindow?.time?.(raw)||String(raw);
+    const policyLine=confirmed
+      ?'Confirmed: '+h(ist(confirmed))+' · Attempt target: '+h(ist(target))+' IST'
+      :'Awaiting confirmation · 60-service-minute target pending';
     const style=[
       '@page{size:3in 4in;margin:0}',
       '*{box-sizing:border-box}html,body{margin:0;padding:0}',
@@ -38,6 +46,7 @@
       '.strap{display:table;margin:4px auto 9px;padding:2px 8px;border-radius:2px;background:#000;color:#fff;font-size:10px;font-weight:900}',
       '.reference{display:flex;justify-content:space-between;gap:3px;font-size:10px;font-weight:800;white-space:nowrap}',
       '.dash{border-top:2px dashed #000;margin:8px 0}',
+      '.policy-line{font-size:8px;text-align:center;margin-top:4px;overflow-wrap:anywhere}',
       '.customer{display:flex;justify-content:space-between;gap:6px;font-size:12px;font-weight:800}',
       '.phone{font-size:9px;white-space:nowrap}',
       '.address{font-size:10px;line-height:1.3;margin:4px 0 7px;overflow-wrap:anywhere}',
@@ -56,7 +65,7 @@
     const markup='<!doctype html><html lang="en"><head><meta charset="utf-8"><title>EasyMandi Packing Slip - '+h(id)+'</title><style>'+style+'</style></head><body>'+
       '<div class="controls"><button onclick="window.print()">Print / Save as PDF</button></div>'+
       '<main class="slip"><div class="brand">EASYMANDI</div><div class="strap">PACKING &amp; DELIVERY SLIP</div>'+
-      '<div class="reference"><span>Order ID: #'+h(id)+'</span><span>Date: '+h(dateText)+'</span></div><div class="dash"></div>'+
+      '<div class="reference"><span>Order ID: #'+h(id)+'</span><span>Date: '+h(dateText)+'</span></div><div class="policy-line">'+policyLine+'</div><div class="dash"></div>'+
       '<div class="customer"><span>'+h(order.customer_name||'Customer')+'</span><span class="phone">'+(order.mobile||order.customer_mobile?'☎ '+h(order.mobile||order.customer_mobile):'')+'</span></div>'+
       '<p class="address"><strong>Address:</strong> '+h(address)+'</p>'+
       '<table><thead><tr><th class="number">#</th><th>Product</th><th class="quantity">Ord. Qty</th><th class="check">✓</th></tr></thead><tbody>'+rows+'</tbody></table>'+
