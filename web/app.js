@@ -119,7 +119,18 @@ async function loadAdmin(focusId=null){
       note(result.changed?(result.reassigned?'Partner changed. New code sent to customer notifications.':'Partner assigned. Code sent to customer notifications.'):'This partner is already assigned.');
       }finally{assign.disabled=!unfinished;}
     });
-    article.append(title,details,select,assign);
+    const print=document.createElement('button');print.type='button';print.textContent='Print Slip';print.className='detail-button';
+    print.onclick=run(async()=>{
+      // Open synchronously from the click so browsers do not block printing after the API request.
+      const popup=window.open('','_blank');
+      if(!popup)throw Error('Allow pop-ups to print the slip.');
+      try{
+        const loaded=await request('admin','POST',{operation:'detail',id:Number(o.id)},'admin');
+        if(!window.EasyMandiPacking?.printSheet)throw Error('Slip printer is unavailable. Refresh this page.');
+        window.EasyMandiPacking.printSheet(loaded.order,popup);
+      }catch(error){popup.close();throw error;}
+    });
+    article.append(title,details,select,assign,print);
     if(o.location_lat!=null&&o.location_lng!=null){
       const map=document.createElement('a');
       map.href='https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(o.location_lat+','+o.location_lng);
@@ -183,6 +194,9 @@ async function showOrderDetail(article,id){
   const heading=document.createElement('h5');
   heading.textContent='Full order details';
   panel.append(heading);
+  const printDetail=document.createElement('button');printDetail.type='button';printDetail.textContent='Print Slip';printDetail.className='detail-button';
+  printDetail.onclick=()=>window.EasyMandiPacking?.printSheet(o);
+  panel.append(printDetail);
   const grid=document.createElement('div');
   grid.className='detail-grid';
   detailText(grid,'Delivery ID',o.id);
