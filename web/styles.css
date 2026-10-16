@@ -456,3 +456,5 @@ header .brand small{color:#3f6b51}
 header .brand .logo{width:148px;height:62px;object-fit:contain;border-radius:0;background:transparent;color:inherit;display:block}
 @media(max-width:700px){header .brand .logo{width:118px;height:49px}header .brand small{display:none}}
 @media(max-width:400px){header .brand .logo{width:99px;height:43px}header .brand{gap:7px}}
+
+.delivery-target-notice{margin:8px 0;padding:10px 12px;border:1px solid #bedbea;border-radius:9px;background:#f0f7fc;color:#20516f;font-size:12px;line-height:1.5;font-weight:650;overflow-wrap:anywhere}
