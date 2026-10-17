@@ -14,8 +14,9 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
-      - name: Create Android project and restore app sources
+      - name: Rebuild the full Delivery Partner Android application
         run: |
+          set -euo pipefail
           cp partner_app/pubspec.yaml /tmp/delivery-pubspec.yaml
           cp partner_app/lib/main.dart /tmp/delivery-main.dart
           cd partner_app
@@ -24,21 +25,31 @@ jobs:
           cp /tmp/delivery-main.dart lib/main.dart
           rm -f test/widget_test.dart analysis_options.yaml
           sed -i 's/<application/<uses-permission android:name="android.permission.INTERNET"\/><application/' android/app/src/main/AndroidManifest.xml
-          sed -i 's/android:label="delivery_partner"/android:label="Delivery Partner"/' android/app/src/main/AndroidManifest.xml
+          sed -i 's/android:label="delivery_partner"/android:label="Easy Mandi Delivery Partner"/' android/app/src/main/AndroidManifest.xml
           python3 - <<'PY'
           import xml.etree.ElementTree as ET
           root = ET.parse("android/app/src/main/AndroidManifest.xml").getroot()
           android = "{http://schemas.android.com/apk/res/android}"
           permissions = {p.attrib.get(android + "name") for p in root.findall("uses-permission")}
           assert "android.permission.INTERNET" in permissions, "Missing internet permission"
+          application = root.find("application")
+          assert application is not None and application.attrib.get(android + "label") == "Easy Mandi Delivery Partner", "Unexpected app label"
           print("Delivery APK manifest verified. SQLite does not require Android storage permissions.")
           PY
           python3 -m pip install --user pillow cairosvg
           python3 icon/generate.py
+          test -s lib/main.dart
+          test -s lib/app_update.dart
+          test -s lib/notification_overlay.dart
+          test -s lib/notification_settings.dart
+          test -s assets/brand-symbol.png
           flutter pub get
           flutter analyze
           flutter test
           flutter build apk --release
+          test -s build/app/outputs/flutter-apk/app-release.apk
+          unzip -tq build/app/outputs/flutter-apk/app-release.apk >/dev/null
+          sha256sum build/app/outputs/flutter-apk/app-release.apk
       - uses: actions/upload-artifact@v4
         with:
           name: delivery-partner-apk
