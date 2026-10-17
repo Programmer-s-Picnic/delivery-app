@@ -29,8 +29,18 @@ jobs:
           done
           printf '%s' "$PLAY_UPLOAD_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/easy-mandi-delivery-upload.jks"
           chmod 600 "$RUNNER_TEMP/easy-mandi-delivery-upload.jks"
-          keytool -list -keystore "$RUNNER_TEMP/easy-mandi-delivery-upload.jks" \
-            -storepass "$PLAY_UPLOAD_STORE_PASSWORD" -alias "$PLAY_UPLOAD_KEY_ALIAS" >/dev/null
+          # Diagnose configuration errors without ever printing keystore secrets.
+          if ! keytool -list -keystore "$RUNNER_TEMP/easy-mandi-delivery-upload.jks" \
+            -storepass "$PLAY_UPLOAD_STORE_PASSWORD" >/dev/null 2>&1; then
+            echo "::error::Delivery signing keystore cannot be opened. Check the Base64 ZIP entry and EASYMANDI_DELIVERY_UPLOAD_STORE_PASSWORD against the original signing kit."
+            exit 1
+          fi
+          if ! keytool -list -keystore "$RUNNER_TEMP/easy-mandi-delivery-upload.jks" \
+            -storepass "$PLAY_UPLOAD_STORE_PASSWORD" -alias "$PLAY_UPLOAD_KEY_ALIAS" >/dev/null 2>&1; then
+            echo "::error::Delivery keystore opens, but EASYMANDI_DELIVERY_UPLOAD_KEY_ALIAS does not match a key in that keystore."
+            exit 1
+          fi
+          echo "Delivery upload keystore and alias verified."
       - name: Recreate delivery Android project and apply official brand
         run: |
           set -euo pipefail
