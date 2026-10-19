@@ -105,6 +105,22 @@ class _JobsPageState extends State<JobsPage> {
   }
 
 
+  Future<void> openPrivacyPolicy() async {
+    final privacyUrl = Uri.parse('https://easymandi.in/delivery-partner-privacy.html');
+    try {
+      if (await launchUrl(privacyUrl, mode: LaunchMode.externalApplication)) {
+        return;
+      }
+    } catch (_) {
+      // Handle an unavailable external browser below.
+    }
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Could not open the Privacy Policy. Please try again.'),
+      ));
+    }
+  }
+
   static const statusLabels = <String, String>{
     'assigned': 'Assigned',
     'picked_up': 'Picked up',
@@ -1045,6 +1061,11 @@ class _JobsPageState extends State<JobsPage> {
             icon: const Icon(Icons.help_outline),
             label: const Text('How to use the delivery app'),
           ),
+          TextButton.icon(
+            onPressed: openPrivacyPolicy,
+            icon: const Icon(Icons.privacy_tip_outlined),
+            label: const Text('Privacy Policy'),
+          ),
         ],
       );
 
@@ -1071,10 +1092,12 @@ class _JobsPageState extends State<JobsPage> {
             tooltip: 'More options',
             onSelected: (action) {
               if (action == 'help') showHelp();
+              if (action == 'privacy') openPrivacyPolicy();
               if (action == 'update') checkApkUpdate(manual: true);
             },
             itemBuilder: (_) => const [
               PopupMenuItem(value: 'help', child: Text('How to use')),
+              PopupMenuItem(value: 'privacy', child: Text('Privacy Policy')),
               PopupMenuItem(value: 'update', child: Text('Check for APK update')),
             ],
           ),
