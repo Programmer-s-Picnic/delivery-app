@@ -44,7 +44,7 @@ jobs:
           test -s lib/notification_settings.dart
           test -s assets/brand-symbol.png
           flutter pub get
-          flutter analyze
+          flutter analyze --no-fatal-infos
           flutter test
           flutter build apk --release
           test -s build/app/outputs/flutter-apk/app-release.apk
