@@ -24,14 +24,14 @@ jobs:
           cp /tmp/delivery-pubspec.yaml pubspec.yaml
           cp /tmp/delivery-main.dart lib/main.dart
           rm -f test/widget_test.dart analysis_options.yaml
-          sed -i 's/<application/<uses-permission android:name="android.permission.INTERNET"\/><application/' android/app/src/main/AndroidManifest.xml
+          sed -i 's/<application/<uses-permission android:name="android.permission.INTERNET"\/><uses-permission android:name="android.permission.RECORD_AUDIO"\/><queries><intent><action android:name="android.speech.RecognitionService"\/><\/intent><\/queries><application/' android/app/src/main/AndroidManifest.xml
           sed -i 's/android:label="delivery_partner"/android:label="Easy Mandi Delivery Partner"/' android/app/src/main/AndroidManifest.xml
           python3 - <<'PY'
           import xml.etree.ElementTree as ET
           root = ET.parse("android/app/src/main/AndroidManifest.xml").getroot()
           android = "{http://schemas.android.com/apk/res/android}"
           permissions = {p.attrib.get(android + "name") for p in root.findall("uses-permission")}
-          assert "android.permission.INTERNET" in permissions, "Missing internet permission"
+          assert "android.permission.INTERNET" in permissions and "android.permission.RECORD_AUDIO" in permissions, "Missing internet/microphone permission"
           application = root.find("application")
           assert application is not None and application.attrib.get(android + "label") == "Easy Mandi Delivery Partner", "Unexpected app label"
           print("Delivery APK manifest verified. SQLite does not require Android storage permissions.")

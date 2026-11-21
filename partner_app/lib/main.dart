@@ -11,6 +11,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'notification_overlay.dart';
 import 'notification_settings.dart';
 import 'app_update.dart';
+import 'voice_search_button.dart';
 
 const endpoint = 'https://cserver.learnwithchampak.live/delivery/api/';
 const storage = FlutterSecureStorage();
@@ -966,9 +967,18 @@ class _JobsPageState extends State<JobsPage> {
         const SizedBox(height: 12),
         TextField(
           controller: search,
-          decoration: const InputDecoration(
-            prefixIcon: Icon(Icons.search),
+          decoration: InputDecoration(
+            prefixIcon: const Icon(Icons.search),
             labelText: 'Search order, customer, mobile or address',
+            suffixIcon: VoiceSearchButton(
+              hindi: Localizations.localeOf(context).languageCode == 'hi',
+              onText: (text) {
+                search.value = TextEditingValue(
+                  text: text,
+                  selection: TextSelection.collapsed(offset: text.length),
+                );
+              },
+            ),
           ),
         ),
         const SizedBox(height: 10),

@@ -51,7 +51,7 @@ jobs:
           cp /tmp/partner-pubspec.yaml pubspec.yaml
           cp /tmp/partner-main.dart lib/main.dart
           rm -f test/widget_test.dart analysis_options.yaml
-          sed -i 's/<application/<uses-permission android:name="android.permission.INTERNET"\/><application/' android/app/src/main/AndroidManifest.xml
+          sed -i 's/<application/<uses-permission android:name="android.permission.INTERNET"\/><uses-permission android:name="android.permission.RECORD_AUDIO"\/><queries><intent><action android:name="android.speech.RecognitionService"\/><\/intent><\/queries><application/' android/app/src/main/AndroidManifest.xml
           sed -i 's/android:label="delivery_partner"/android:label="Easy Mandi Delivery Partner"/' android/app/src/main/AndroidManifest.xml
           python3 -m venv "$RUNNER_TEMP/delivery-brand-venv"
           "$RUNNER_TEMP/delivery-brand-venv/bin/pip" install pillow cairosvg
