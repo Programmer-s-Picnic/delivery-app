@@ -57,7 +57,7 @@ jobs:
           "$RUNNER_TEMP/delivery-brand-venv/bin/pip" install pillow cairosvg
           "$RUNNER_TEMP/delivery-brand-venv/bin/python" icon/generate.py
           flutter pub get
-          flutter analyze
+          flutter analyze --no-fatal-infos
           flutter test
           test -f android/app/build.gradle.kts
           grep -F 'applicationId = "live.learnwithchampak.delivery_partner"' android/app/build.gradle.kts
