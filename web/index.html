@@ -12,12 +12,13 @@
 <link rel="icon" type="image/svg+xml" href="../partner_app/icon/brand-symbol.svg?v=20261014-hindi-logo">
 <link rel="apple-touch-icon" href="../partner_app/icon/brand-symbol.svg?v=20261014-hindi-logo">
 <title>Delivery Platform</title>
-<link rel="stylesheet" href="styles.css?v=20261016-four-hours-v1">
+<link rel="stylesheet" href="styles.css?v=20261121-voice-v1">
 <script src="notification-settings.js?v=20261010-types" defer></script>
 <script src="notifications.js?v=20261010-draggable-v1" defer>
 </script>
 <script src="packing-slip.js?v=20261016-policy-v2" defer></script>
 <script src="delivery-window.js?v=20261016-policy-v2" defer></script>
+<script src="voice-search.js?v=20261121-v1" defer></script>
 <script src="app.js?v=20261016-policy-v2" defer>
 </script>
 <link rel="stylesheet" href="notifications.css?v=20261010-draggable-v1">
@@ -116,7 +117,7 @@
 <section class="partner-management" aria-labelledby="partnerManagementTitle">
 <div class="partner-heading"><div><h3 id="partnerManagementTitle">Delivery partners</h3><p>Manage accounts and availability. Changes are saved directly to the server.</p></div><button id="newPartner" type="button">Add partner</button></div>
 <p id="partnerFeedback" role="status" aria-live="polite"></p>
-<div class="order-tools"><label>Search partners<input id="partnerSearch" type="search" placeholder="Name, mobile or ID"></label><label>Account status<select id="partnerFilter"><option value="all">All partners</option><option value="active">Active</option><option value="inactive">Inactive</option></select></label></div>
+<div class="order-tools"><div class="voice-search-form-field"><label for="partnerSearch">Search partners</label><div class="voice-search-field"><input id="partnerSearch" type="search" placeholder="Name, mobile or ID"><button id="partnerVoiceSearch" class="voice-search-btn" type="button" hidden aria-pressed="false" aria-label="Search partners by voice" title="Search partners by voice"><svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 17v5m-4 0h8"/></svg></button></div></div><label>Account status<select id="partnerFilter"><option value="all">All partners</option><option value="active">Active</option><option value="inactive">Inactive</option></select></label></div>
 <p id="partnerCount"></p><div id="partnerList" tabindex="0" role="region" aria-label="Delivery partner records"></div>
 <dialog id="partnerDialog" aria-labelledby="partnerFormTitle"><form id="partnerForm" novalidate>
 <h3 id="partnerFormTitle">Add delivery partner</h3><p id="partnerFormError" role="alert"></p>
@@ -131,8 +132,7 @@
 <div class="delivery-key" aria-label="Delivery stage color key"><strong>Stage key</strong>
 <span class="stage-created">Unassigned</span><span class="stage-assigned">Assigned</span><span class="stage-picked_up">Picked up</span><span class="stage-out_for_delivery">Out for delivery</span><span class="stage-delivered">Delivered</span><span class="stage-cancelled">Cancelled</span></div>
 <div class="order-tools">
-<label>Find a delivery<input id="deliverySearch" type="search" placeholder="Order ID, customer or address">
-</label>
+<div class="voice-search-form-field"><label for="deliverySearch">Find a delivery</label><div class="voice-search-field"><input id="deliverySearch" type="search" placeholder="Order ID, customer or address"><button id="deliveryVoiceSearch" class="voice-search-btn" type="button" hidden aria-pressed="false" aria-label="Search deliveries by voice" title="Search deliveries by voice"><svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 17v5m-4 0h8"/></svg></button></div></div>
 <label>Status<select id="deliveryFilter">
 <option value="">All statuses</option>
 <option value="created">Unassigned</option>

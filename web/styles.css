@@ -458,3 +458,13 @@ header .brand .logo{width:148px;height:62px;object-fit:contain;border-radius:0;b
 @media(max-width:400px){header .brand .logo{width:99px;height:43px}header .brand{gap:7px}}
 
 .delivery-target-notice{margin:8px 0;padding:10px 12px;border:1px solid #bedbea;border-radius:9px;background:#f0f7fc;color:#20516f;font-size:12px;line-height:1.5;font-weight:650;overflow-wrap:anywhere}
+
+/* Optional voice search for delivery and partner filters. Existing inputs remain usable. */
+.order-tools .voice-search-form-field{flex:1 1 220px;min-width:185px}
+.voice-search-form-field>label{display:block;margin:0 0 5px}
+.voice-search-field{display:flex;align-items:center;gap:7px}
+.voice-search-field input{flex:1 1 auto;min-width:0;margin:0}
+.voice-search-btn{display:grid;place-items:center;flex:0 0 45px;height:45px;background:#edf7f2;border:1px solid #bbd8c7;color:#176b46;border-radius:10px}
+.voice-search-btn[aria-pressed="true"]{background:#176b46;color:white;box-shadow:0 0 0 3px #ccebd9}
+.voice-search-btn:focus-visible{outline:2px solid #176b46;outline-offset:2px}
+.voice-search-btn[hidden]{display:none!important}
